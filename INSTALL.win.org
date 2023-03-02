@@ -1,0 +1,50 @@
+* Windows 开发环境安装指南 - 从装机到电动
+
+** 初始化设置部分
+
+** 安装常用软件
+
+** 配置开发环境
+
+*** 终端配置
+1. DONE 安装 Windows Terminal
+2. TODO 从[[NerdFonts][https://www.nerdfonts.com/font-downloads]]下载Cascadia字体的修改版。 ([[直接下载][https://github.com/ryanoasis/nerd-fonts/releases/download/v2.3.3/CascadiaCode.zip]])
+3.  1. TODO 配置~默认终端应用程序~为Windows Terminal。
+    2. TODO 默认配置为 ~Powershell~(或其他终端模拟器)。
+4.  1. TODO 选择~默认值~选项卡，~外观 > 字体~ 设置为~CaskaydiaCove Nerd Font Mono~。
+    2. TODO 背景不透明度设为90%，启用亚克力材质。
+5. TODO 选择~命令行提示符~等，设置~从下拉栏隐藏~为是。
+
+*** 安装开发软件
+1. 安装~scoop~
+    1. TODO 到[[~scoop~网站]]复制安装指令到终端执行。
+        //#+BEGIN_SRC Powershell
+        # Optional: Needed to run a remote script the first time
+        Set-ExecutionPolicy RemoteSigned -Scope CurrentUser 
+        # irm get.scoop.sh | iex
+        Invoke-RestMethod get.scoop.sh | Invoke-Expression
+        //#+END_SRC
+    2. TODO 安装~git~，并更新
+        //#+BEGIN_SRC Powershell
+        scoop install git 
+        scoop update *
+        //#END_SRC
+    3. TODO 配置代理
+        //#+BEGIN_SRC Powershell
+        scoop config proxy "127.0.0.1:7890"
+        //#END_SRC
+    3. TODO 安装常用软件
+        //#+BEGIN_SRC Powershell
+        scoop install emacs vim fd go jabba llvm oh-my-posh ripgrep rustup
+        //#END_SRC
+2. 配置profile
+    1. TODO 打开~$PROFILE~文件，复制[[./windows/profile.ps1]]的内容。
+    2. TODO 从~{HOME}/scoop/oh-my-posh/current/themes~中复制~negligible.omp.json~文件到home目录。
+    2. TODO 使用管理员权限的终端，安装~PSReadLine~
+        //#+BEGIN_SRC Powershell
+        Install-Module PSReadLine -Force
+        //#+END_SRC
+3. 安装开发软件
+    1. 安装python
+    2. 安装golang
+    3. 安装rust
