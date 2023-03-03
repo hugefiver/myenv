@@ -48,7 +48,13 @@ scoop config proxy "127.0.0.1:7890"
 4. TODO 安装常用软件
 
 //#+BEGIN_SRC powershell
-scoop install emacs vim fd go jabba llvm oh-my-posh ripgrep rustup
+scoop install emacs vim fd go llvm oh-my-posh ripgrep rustup
+
+# install jabba
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+Invoke-Expression (
+  Invoke-WebRequest https://github.com/shyiko/jabba/raw/master/install.ps1 -UseBasicParsing
+).Content
 //#END_SRC
 
 **** 配置profile
