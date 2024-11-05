@@ -10,24 +10,29 @@
     home-manager.url = "github:nix-community/home-manager";
   };
 
-  outputs = { self, nixpkgs, home-manager }:
-    let
-      common = nixpkgs.lib.nixosSystem {
-        modules = [
-          ./hardware-config/hardware-config.nix
-        ];
-      };
-    in
-    {
-      nixosConfigurations.server = {
-        imports = [ common ];
+  outputs = {
+    self,
+    nixpkgs,
+    home-manager,
+  }: let
+    common = nixpkgs.lib.nixosSystem {
+      modules = [
+        ./hardware-config/hardware-config.nix
+      ];
+    };
+  in {
+    imports = [
+      ./nix/common/common-pkgs.nix
+    ];
+
+    nixosConfigurations = rec {
+      nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
 
         services.openssh = {
           port = 22;
-          
         };
       };
-
     };
+  };
 }
