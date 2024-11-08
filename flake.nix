@@ -14,7 +14,7 @@
     self,
     nixpkgs,
     home-manager,
-  }: let
+  }@inputs: let
     common = nixpkgs.lib.nixosSystem {
       modules = [
         ./hardware-config/hardware-config.nix
@@ -29,9 +29,18 @@
       nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
 
-        services.openssh = {
-          port = 22;
+        # modules = [
+        #   # ./nix/common/nixos-pkgs.nix
+        #   /etc/nixos/configure.nix
+        # ];
+
+        specialArgs = {
+          inherit inputs;
         };
+
+        # services.openssh = {
+        #   port = 22;
+        # };
       };
     };
   };
