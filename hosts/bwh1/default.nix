@@ -12,7 +12,6 @@
 in {
   imports =
     [
-
       inputs.disko.nixosModules.disko
       inputs.nixos-facter-modules.nixosModules.facter
 
@@ -59,13 +58,20 @@ in {
   time.timeZone = "Asia/Shanghai";
   # i18n.defaultLocale = "en_US.UTF-8";
 
-  environment.systemPackages = with pkgs; [
-  ];
+  environment.systemPackages =
+    (with pkgs; [
+      ])
+    ++ (
+      with unstable; [
+        rclone
+        jdk21
+      ]
+    );
 
   services.openssh = {
     enable = true;
     settings = {
-      PasswordAuthentication  = false;
+      PasswordAuthentication = false;
       PermitRootLogin = "prohibit-password";
       AllowUsers = ["root" "hugefiver"];
 
