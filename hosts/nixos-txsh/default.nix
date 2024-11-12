@@ -22,8 +22,9 @@ in {
       inputs.nixos-facter-modules.nixosModules.facter
 
       (import ../common/common-pkgs.nix {pkgs = unstable;})
-      ./disk.nix
+      (import ../common/nix-ld.nix {pkgs = unstable;})
 
+      ./disk.nix
       ./user.nix
     ]
     ++ lib.optional (builtins.pathExists /etc/nixos/local/txsh.nix) [/etc/nixos/local/txsh.nix];
