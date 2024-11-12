@@ -1,0 +1,6 @@
+# hosts/*/hardware_configuration.nix
+# hosts/*/facter.json
+!uncommon/**/.gitkeep
+uncommon/
+
+/local/
