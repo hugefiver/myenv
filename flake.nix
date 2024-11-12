@@ -33,6 +33,18 @@
           ./hosts/nixos-txsh
         ];
       };
+
+      bwh1 = nixpkgs.lib.nixosSystem rec {
+        system = "x86_64-linux";
+
+        specialArgs = {
+          inherit self inputs nixpkgs nixpkgs-unstable system;
+        };
+
+        modules = [
+          ./hosts/bwh1
+        ];
+      };
     };
   };
 }
