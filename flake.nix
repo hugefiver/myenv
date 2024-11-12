@@ -34,6 +34,18 @@
         ];
       };
 
+      nixos-txjp = nixpkgs.lib.nixosSystem rec {
+        system = "x86_64-linux";
+
+        specialArgs = {
+          inherit self inputs nixpkgs nixpkgs-unstable system;
+        };
+
+        modules = [
+          ./hosts/nixos-txjp
+        ];
+      };
+
       bwh1 = nixpkgs.lib.nixosSystem rec {
         system = "x86_64-linux";
 
