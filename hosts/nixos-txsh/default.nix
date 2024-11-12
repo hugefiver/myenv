@@ -65,6 +65,10 @@ in {
     "183.60.82.98"
   ];
 
+  environment.veriables = {
+    EDITOR = "vim";
+  };
+
   # Set your time zone.
   time.timeZone = "Asia/Shanghai";
 
