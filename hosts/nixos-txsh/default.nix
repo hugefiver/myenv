@@ -74,15 +74,35 @@ in {
   services.openssh = {
     enable = true;
     settings = {
+      PasswordAuthentication  = false;
       #PermitRootLogin = "yes";
       PermitRootLogin = "prohibit-password";
       AllowUsers = ["root" "hugefiver"];
+
+      # LogLevel = "VERBOSE";
     };
+  };
+
+  networking.firewall = {
+    enable = true;
+    allowedTCPPorts = [22];
+    allowedUDPPorts = [];
+  };
+
+  services.fail2ban = {
+    enable = true;
   };
 
   virtualisation.docker = {
     enable = true;
     storageDriver = "btrfs";
+  };
+
+  users.extraGroups.docker.members = ["root" "hugefiver"];
+
+  security.sudo = {
+    enable = true;
+    wheelNeedsPassword = false;
   };
 
   # Configure network proxy if necessary
