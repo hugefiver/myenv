@@ -21,7 +21,7 @@ in {
       inputs.disko.nixosModules.disko
       inputs.nixos-facter-modules.nixosModules.facter
 
-      ../common/common-pkgs.nix
+      (import ../common/common-pkgs.nix {pkgs = unstable;})
       ./disk.nix
 
       ./user.nix
@@ -68,12 +68,8 @@ in {
   # Set your time zone.
   time.timeZone = "Asia/Shanghai";
 
-  environment.systemPackages = with pkgs;
-    [
-    ]
-    ++ (with unstable; [
-      docker
-    ]);
+  environment.systemPackages = with pkgs; [
+  ];
 
   services.openssh = {
     enable = true;
