@@ -20,6 +20,8 @@ in {
 
       ./disk.nix
       ./user.nix
+
+      ./programs.nix
     ]
     ++ lib.optional (builtins.pathExists /etc/nixos/local/bwh1.nix) [/etc/nixos/local/bwh1.nix];
 

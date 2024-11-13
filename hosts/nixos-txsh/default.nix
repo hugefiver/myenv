@@ -74,6 +74,7 @@ in {
   time.timeZone = "Asia/Shanghai";
 
   environment.systemPackages = with pkgs; [
+    docker-compose
   ];
 
   services.openssh = {
@@ -90,8 +91,8 @@ in {
 
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [22];
-    allowedUDPPorts = [];
+    allowedTCPPorts = [22 3478];
+    allowedUDPPorts = [3478];
   };
 
   services.fail2ban = {
