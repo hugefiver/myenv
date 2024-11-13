@@ -115,6 +115,11 @@ in {
   virtualisation.docker = {
     enable = true;
     storageDriver = "btrfs";
+    daemon.settings = {
+      registry-mirrors = [
+        "https://mirror.ccs.tencentyun.com"
+      ];
+    };
   };
 
   users.extraGroups.docker.members = ["root" "hugefiver"];
