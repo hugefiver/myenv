@@ -58,13 +58,26 @@ in {
   # Pick only one of the below networking options.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
   # networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
-  networking.nameservers = [
-    "119.29.29.29"
-    "223.5.5.5"
-    "8.8.8.8"
-    "183.60.83.19"
-    "183.60.82.98"
-  ];
+  # networking.nameservers = [
+  #   "119.29.29.29"
+  #   "223.5.5.5"
+  #   "8.8.8.8"
+  #   # "183.60.83.19"
+  #   # "183.60.82.98"
+  # ];
+
+  services.dnsmasq = {
+    enable = true;
+    settings = {
+      server = [
+        "/tencentyun.com/183.60.83.19"
+        "/tencentyun.com/183.60.82.98"
+        "119.29.29.29"
+        "223.5.5.5"
+        "8.8.8.8"
+      ];
+    };
+  };
 
   environment.variables = {
     EDITOR = "vim";
