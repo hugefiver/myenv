@@ -5,5 +5,5 @@
       openssl = pkgs.libressl;
     };
     
-  }
+  };
 }
