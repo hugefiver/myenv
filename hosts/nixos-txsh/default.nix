@@ -52,8 +52,8 @@ in {
   # boot.loader.grub.efiInstallAsRemovable = true;
   # boot.loader.efi.efiSysMountPoint = "/boot/efi";
   # Define on which hard drive you want to install Grub.
-  boot.loader.grub.device = "/dev/vda"; # or "nodev" for efi only
-  fileSystems."/".device = lib.mkDefault "/dev/vda";
+  # boot.loader.grub.device = "/dev/vda"; # or "nodev" for efi only
+  # fileSystems."/".device = lib.mkDefault "/dev/vda";
 
   networking.hostName = "nixos-txsh"; # Define your hostname.
   # Pick only one of the below networking options.

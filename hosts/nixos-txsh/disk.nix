@@ -6,7 +6,7 @@
       content = {
         type = "gpt";
         partitions = {
-           boot = { size = "1M"; type = "EF02"; };
+           MBR = { size = "1M"; type = "EF02"; priority = 1; };
            root = { name = "root"; size = "100%"; content = { type = "filesystem"; format = "btrfs"; mountpoint = "/"; }; };
         };
       };
