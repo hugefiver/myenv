@@ -6,9 +6,8 @@
       content = {
         type = "gpt";
         partitions = {
-           MBR = { size = "1M"; type = "EF02"; priority = 1; };
-           ESP = { size = "200M"; type = "EF00"; priority = 2; content = { type = "filesystem"; format = "vfat"; mountpoint = "/boot"; mountOptions = [ "umask=0077" ]; }; };
-           root = { name = "root"; size = "100%"; content = { type = "filesystem"; format = "btrfs"; mountpoint = "/"; }; };
+          MBR = { size = "1M"; type = "EF02"; priority = 1; };
+          root = { name = "root"; size = "100%"; content = { type = "filesystem"; format = "btrfs"; mountpoint = "/"; }; };
         };
       };
     };

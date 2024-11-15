@@ -29,7 +29,10 @@ in {
     ]
     ++ lib.optional (builtins.pathExists /etc/nixos/local/txsh.nix) [/etc/nixos/local/txsh.nix];
 
-  # facter.reportPath = ./facter.json;
+  # used for nixos-anywhre installation
+  # generate `facter.json` near this file
+  # facter.reportPath = "./facter.json";
+
   facter.reportPath =
     if builtins.pathExists ./facter.json
     then "./facter.json"

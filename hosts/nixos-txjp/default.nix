@@ -29,13 +29,17 @@ in {
     ]
     ++ lib.optional (builtins.pathExists /etc/nixos/local/txjp.nix) [/etc/nixos/local/txjp.nix];
 
-  # facter.reportPath = ./facter.json;
-  facter.reportPath =
-    if builtins.pathExists ./facter.json
-    then "./facter.json"
-    else if builtins.pathExists /etc/nixos/local/facter.json
-    then "/etc/nixos/local/facter.json"
-    else null;
+  # used for nixos-anywhre installation
+  # generate `facter.json` at the root of `flake.nix`
+  # facter.reportPath = "${self}/facter.json";
+  facter.reportPath = ./facter.json;
+
+  # facter.reportPath =
+  #   if builtins.pathExists ./facter.json
+  #   then "./facter.json"
+  #   else if builtins.pathExists /etc/nixos/local/facter.json
+  #   then "/etc/nixos/local/facter.json"
+  #   else null;
 
   # nix.settings.substituters = lib.mkForce [
   #   "https://cache.nixos.org"
