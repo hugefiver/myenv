@@ -120,6 +120,7 @@ in {
     enable = true;
     storageDriver = "btrfs";
   };
+  systemd.services.docker.unitConfig.Restart = "on-failure";
 
   users.extraGroups.docker.members = ["root" "hugefiver"];
 
