@@ -21,16 +21,17 @@ in {
       ./disk.nix
       ./user.nix
 
-      ./programs.nix
+      (import ./programs.nix {inherit pkgs unstable;})
     ]
     ++ lib.optional (builtins.pathExists /etc/nixos/local/bwh1.nix) [/etc/nixos/local/bwh1.nix];
 
-  facter.reportPath =
-    if builtins.pathExists ./facter.json
-    then "./facter.json"
-    else if builtins.pathExists /etc/nixos/local/facter.json
-    then "/etc/nixos/local/facter.json"
-    else null;
+  # facter.reportPath =
+  #   if builtins.pathExists ./facter.json
+  #   then "./facter.json"
+  #   else if builtins.pathExists /etc/nixos/local/facter.json
+  #   then "/etc/nixos/local/facter.json"
+  #   else null;
+  # facter.reportPath = "${self}/facter.json";
 
   # nix.settings.substituters = lib.mkForce [
   #   "https://cache.nixos.org"
@@ -63,7 +64,8 @@ in {
 
   environment.systemPackages =
     (with pkgs; [
-      ])
+      docker-compose
+    ])
     ++ (
       with unstable; [
         rclone
@@ -74,6 +76,7 @@ in {
   services.openssh = {
     enable = true;
     settings = {
+      Ports = 26474;
       PasswordAuthentication = false;
       PermitRootLogin = "prohibit-password";
       AllowUsers = ["root" "hugefiver"];
@@ -84,7 +87,7 @@ in {
 
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [22];
+    allowedTCPPorts = [22 26474];
     allowedUDPPorts = [];
   };
 

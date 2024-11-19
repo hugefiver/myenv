@@ -21,7 +21,7 @@
     disko,
     ...
   } @ inputs: {
-    nixosConfigurations ={
+    nixosConfigurations = {
       nixos-txsh = nixpkgs.lib.nixosSystem rec {
         system = "x86_64-linux";
 
