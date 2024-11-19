@@ -26,9 +26,6 @@
                   swap.swapfile.size = "1G";
                 };
               };
-              swap = {
-                swapfile.size = "1G";
-              };
             };
           };
         };

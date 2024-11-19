@@ -25,12 +25,12 @@ in {
     ]
     ++ lib.optional (builtins.pathExists /etc/nixos/local/bwh1.nix) [/etc/nixos/local/bwh1.nix];
 
-  # facter.reportPath =
-  #   if builtins.pathExists ./facter.json
-  #   then "./facter.json"
-  #   else if builtins.pathExists /etc/nixos/local/facter.json
-  #   then "/etc/nixos/local/facter.json"
-  #   else null;
+  facter.reportPath =
+    if builtins.pathExists ./facter.json
+    then "./facter.json"
+    else if builtins.pathExists /etc/nixos/local/facter.json
+    then "/etc/nixos/local/facter.json"
+    else null;
   # facter.reportPath = "${self}/facter.json";
 
   # nix.settings.substituters = lib.mkForce [
