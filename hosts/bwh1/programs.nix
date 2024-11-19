@@ -46,16 +46,16 @@
 
     unitConfig.Type = "simple";
 
-    preStart = "${pkgs.bash} -c 'mkdir -p /root/hath/{cache,true,download}'";
+    preStart = "${pkgs.bash}/bin/bash -c 'sleep 10; mkdir -p /root/hath/{cache,true,download}'";
     serviceConfig = {
       RemainAfterExit = true;
       ExecStart = "${pkgs.writeShellScript "mount_hath.sh" ''
         #!/run/current-system/sw/bin/bash
-        for dir in [ "cache" "true" "download" ]; do
-          mount --bind /mnt/hath/''${dir} /root/hath/''${dir};
+        for dir in "cache" "true" "download"; do
+          /run/current-system/sw/bin/mount --bind /mnt/hath/''${dir} /root/hath/''${dir};
         done
       ''}";
-      ExecStop = "${pkgs.bash} -c 'umount /root/hath/{cache,true,download}'";
+      ExecStop = "${pkgs.bash}/bin/bash -c 'umount /root/hath/{cache,true,download}'";
     };
   };
 
