@@ -62,21 +62,22 @@ in {
   time.timeZone = "Asia/Shanghai";
   # i18n.defaultLocale = "en_US.UTF-8";
 
-  environment.systemPackages =
-    (with pkgs; [
+  environment.systemPackages = with pkgs;
+    [
       docker-compose
-    ])
+    ]
     ++ (
       with unstable; [
         rclone
         jdk21
+        xray
       ]
     );
 
   services.openssh = {
     enable = true;
     settings = {
-      Ports = 26474;
+      Port = 26474;
       PasswordAuthentication = false;
       PermitRootLogin = "prohibit-password";
       AllowUsers = ["root" "hugefiver"];

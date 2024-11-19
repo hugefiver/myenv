@@ -92,7 +92,11 @@ in {
 
   environment.systemPackages = with pkgs; [
     docker-compose
-  ];
+  ] ++ (
+    with unstable; [
+      xray
+    ]
+  );
 
   services.openssh = {
     enable = true;
