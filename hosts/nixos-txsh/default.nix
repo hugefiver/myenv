@@ -83,6 +83,12 @@ in {
     };
   };
 
+  systemd.services.dnsmasq = {
+    requires = ["network.target"];
+    wants = ["systemd-networkd-wait-online.service" "network-online.target"];
+    after = ["systemd-networkd-wait-online.service" "network-online.target"];
+  };
+
   environment.variables = {
     EDITOR = "vim";
   };
@@ -90,13 +96,15 @@ in {
   # Set your time zone.
   time.timeZone = "Asia/Shanghai";
 
-  environment.systemPackages = with pkgs; [
-    docker-compose
-  ] ++ (
-    with unstable; [
-      xray
+  environment.systemPackages = with pkgs;
+    [
+      docker-compose
     ]
-  );
+    ++ (
+      with unstable; [
+        xray
+      ]
+    );
 
   services.openssh = {
     enable = true;
