@@ -21,7 +21,6 @@
         extraConfig = ''
           handle_path /.well-known/acme-challenge/* {
             root /var/lib/acme/acme-challenge
-            auto_https off
           }
         '';
       };
@@ -39,4 +38,5 @@
       };
     };
   };
+  users.extraGroups.acme.members = ["root"];
 }

@@ -1,9 +1,18 @@
 {
+  lib,
   pkgs,
   unstable,
   ...
 }: {
-  services.xray = { enable = true; settingsFile = "/etc/xray/config.json"; };
+  services.xray = {
+    enable = true;
+    settingsFile = "/etc/xray/config.json";
+  };
+  systemd.services.xray.serviceConfig = {
+    DynamicUser = lib.mkForce "false";
+    User = "root";
+    Group = "acme";
+  };
 
   systemd.services.rclone-mount = {
     enable = true;
