@@ -15,28 +15,28 @@
     package = unstable.caddy;
 
     virtualHosts = {
-      "test" = {
-        hostName = "_prk.rurilove.moe";
+      # "test" = {
+      #   hostName = "_prk.rurilove.moe";
 
-        extraConfig = ''
-          handle_path /.well-known/acme-challenge/* {
-            root /var/lib/acme/acme-challenge
-            auto_https off
-          }
-        '';
-      };
+      #   extraConfig = ''
+      #     handle_path /.well-known/acme-challenge/* {
+      #       root /var/lib/acme/acme-challenge
+      #       auto_https off
+      #     }
+      #   '';
+      # };
     };
   };
 
-  security.acme = {
-    acceptTerms = true;
-    defaults.email = "no-connect@iruri.moe";
-    defaults.webroot = "/var/lib/acme/acme-challenge";
+  # security.acme = {
+  #   acceptTerms = true;
+  #   defaults.email = "no-connect@iruri.moe";
+  #   defaults.webroot = "/var/lib/acme/acme-challenge";
 
-    certs = {
-      "test" = {
-        domain = "_prk.rurilove.moe";
-      };
-    };
-  };
+  #   certs = {
+  #     "test" = {
+  #       domain = "_prk.rurilove.moe";
+  #     };
+  #   };
+  # };
 }
