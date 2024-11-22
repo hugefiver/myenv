@@ -50,19 +50,19 @@
     };
   };
 
-  systemd.services.start-hath = {
-    enable = true;
-    wantedBy = ["multi-user.target"];
-    after = ["mount-hath.service"];
-    requires = ["mount-hath.service"];
-    restartIfChanged = false;
+  # systemd.services.start-hath = {
+  #   enable = true;
+  #   wantedBy = ["multi-user.target"];
+  #   after = ["mount-hath.service"];
+  #   requires = ["mount-hath.service"];
+  #   restartIfChanged = false;
 
-    unitConfig.Type = "oneshot";
+  #   unitConfig.Type = "oneshot";
 
-    serviceConfig = {
-      ExecStart = ''
-        ${pkgs.tmux}/bin/tmux new-session -d -s hath -c /root/hath java -jar HentaiAtHome.jar
-      '';
-    };
-  };
+  #   serviceConfig = {
+  #     ExecStart = ''
+  #       ${pkgs.tmux}/bin/tmux new-session -d -s hath -c /root/hath java -jar HentaiAtHome.jar
+  #     '';
+  #   };
+  # };
 }
