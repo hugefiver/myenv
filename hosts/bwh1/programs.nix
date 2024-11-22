@@ -2,17 +2,7 @@
   pkgs,
   unstable
 }: {
-  # services.nginx = {
-  #   enable = true;
-  #   package = pkgs.nginxStable.override {
-  #     openssl = pkgs.libressl;
-  #   };
-  # };
-
-  services.caddy = {
-    enable = true;
-    package = unstable.caddy;
-  };
+  imports = [ ./web.nix ];
 
   systemd.services.rclone-mount = {
     enable = true;

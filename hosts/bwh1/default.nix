@@ -88,8 +88,8 @@ in {
 
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [22 26474 38488];
-    allowedUDPPorts = [];
+    allowedTCPPorts = [22 80 443 26474 38488];
+    allowedUDPPorts = [443];
   };
 
   services.fail2ban = {
