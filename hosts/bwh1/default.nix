@@ -7,9 +7,13 @@
   nixpkgs,
   nixpkgs-unstable,
   ...
-}: let
+}@args: let
   unstable = import nixpkgs-unstable {inherit system;};
 in {
+  _module.args = {
+    inherit unstable;
+  };
+
   imports =
     [
       inputs.disko.nixosModules.disko
@@ -21,7 +25,8 @@ in {
       ./disk.nix
       ./user.nix
 
-      (import ./programs.nix {inherit pkgs unstable;})
+      ./programs.nix
+      ./web.nix
     ]
     ++ lib.optional (builtins.pathExists /etc/nixos/local/bwh1.nix) [/etc/nixos/local/bwh1.nix];
 
@@ -88,8 +93,8 @@ in {
 
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [22 80 443 26474 38488];
-    allowedUDPPorts = [443];
+    allowedTCPPorts = [22 80 443 8443 26474 38488];
+    allowedUDPPorts = [443 8443];
   };
 
   services.fail2ban = {

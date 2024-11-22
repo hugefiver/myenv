@@ -1,8 +1,9 @@
 {
   pkgs,
-  unstable
+  unstable,
+  ...
 }: {
-  imports = [ ./web.nix ];
+  services.xray = { enable = true; settingsFile = "/etc/xray/config.json"; };
 
   systemd.services.rclone-mount = {
     enable = true;

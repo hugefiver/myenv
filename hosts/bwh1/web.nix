@@ -1,6 +1,7 @@
 {
   pkgs,
   unstable,
+  ...
 }: {
   # services.nginx = {
   #   enable = true;
@@ -28,8 +29,9 @@
   };
 
   security.acme = {
-    enable = true;
-    email = "no-connect@iruri.moe";
+    acceptTerms = true;
+    defaults.email = "no-connect@iruri.moe";
+    defaults.webroot = "/var/lib/acme/acme-challenge";
 
     certs = {
       "test" = {
