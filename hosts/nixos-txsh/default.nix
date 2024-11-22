@@ -49,6 +49,11 @@ in {
 
   nix.settings.experimental-features = ["nix-command" "flakes"];
 
+  boot.kernelParams = ["default_hugepagesz=1G" "hugepagesz=1G" "hugepages=1" "hugepagesz=2M" "hugepages=1280"];
+  # boot.kernel.sysctl = {
+  #   "vm.nr_hugepages" = 1280;
+  # };
+
   # Use the GRUB 2 boot loader.
   boot.loader.grub.enable = true;
   # boot.loader.grub.efiSupport = true;
@@ -141,7 +146,10 @@ in {
     wheelNeedsPassword = false;
   };
 
-  services.xray = { enable = true; settingsFile = "/etc/xray/config.json"; };
+  services.xray = {
+    enable = true;
+    settingsFile = "/etc/xray/config.json";
+  };
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";

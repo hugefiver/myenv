@@ -5,6 +5,7 @@
     htop
     tmux
     curl
+    # curlWithGnuTls
   ];
 
   # enable bash history search
