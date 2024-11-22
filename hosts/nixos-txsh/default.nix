@@ -49,10 +49,10 @@ in {
 
   nix.settings.experimental-features = ["nix-command" "flakes"];
 
-  boot.kernelParams = ["default_hugepagesz=1G" "hugepagesz=1G" "hugepages=1" "hugepagesz=2M" "hugepages=1280"];
-  # boot.kernel.sysctl = {
-  #   "vm.nr_hugepages" = 1280;
-  # };
+  # boot.kernelParams = ["default_hugepagesz=2M" "hugepagesz=1G" "hugepages=1"];
+  boot.kernel.sysctl = {
+    "vm.nr_hugepages" = 1180;
+  };
 
   # Use the GRUB 2 boot loader.
   boot.loader.grub.enable = true;
