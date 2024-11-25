@@ -20,13 +20,18 @@
     home-manager,
     disko,
     ...
-  } @ inputs: {
+  } @ inputs: let
+    mkPkgs = nixpkgs: system: import nixpkgs {inherit system;};
+  in {
     nixosConfigurations = {
       nixos-txsh = nixpkgs.lib.nixosSystem rec {
         system = "x86_64-linux";
 
         specialArgs = {
-          inherit self inputs nixpkgs nixpkgs-unstable system;
+          inherit self inputs system;
+          pkgs = mkPkgs nixpkgs system;
+
+          unstable = mkPkgs nixpkgs system;
         };
 
         modules = [
@@ -38,7 +43,10 @@
         system = "x86_64-linux";
 
         specialArgs = {
-          inherit self inputs nixpkgs nixpkgs-unstable system;
+          inherit self inputs system;
+
+          pkgs = mkPkgs nixpkgs system;
+          unstable = mkPkgs nixpkgs-unstable system;
         };
 
         modules = [
@@ -50,7 +58,10 @@
         system = "x86_64-linux";
 
         specialArgs = {
-          inherit self inputs nixpkgs nixpkgs-unstable system;
+          inherit self inputs system;
+
+          pkgs = mkPkgs nixpkgs system;
+          unstable = mkPkgs nixpkgs-unstable system;
         };
 
         modules = [

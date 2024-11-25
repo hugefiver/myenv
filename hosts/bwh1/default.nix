@@ -3,13 +3,10 @@
   inputs,
   lib,
   pkgs,
+  unstable,
   system,
-  nixpkgs,
-  nixpkgs-unstable,
   ...
-}@args: let
-  unstable = import nixpkgs-unstable {inherit system;};
-in {
+}@args: {
   _module.args = {
     inherit unstable;
   };

@@ -6,13 +6,10 @@
   inputs,
   lib,
   pkgs,
+  unstable,
   system,
-  nixpkgs,
-  nixpkgs-unstable,
   ...
-}: let
-  unstable = import nixpkgs-unstable {inherit system;};
-in {
+}: {
   imports =
     [
       # Include the results of the hardware scan.
