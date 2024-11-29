@@ -71,7 +71,9 @@
   #   # "183.60.83.19"
   #   # "183.60.82.98"
   # ];
-
+  
+  services.resolved.enable = false;
+  
   services.dnsmasq = {
     enable = true;
     settings = {
