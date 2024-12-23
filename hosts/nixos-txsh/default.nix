@@ -72,20 +72,20 @@
   #   # "183.60.82.98"
   # ];
   
-  services.resolved.enable = false;
+  # services.resolved.enable = false;
   
-  services.dnsmasq = {
-    enable = true;
-    settings = {
-      server = [
-        "/tencentyun.com/183.60.83.19"
-        "/tencentyun.com/183.60.82.98"
-        "119.29.29.29"
-        "223.5.5.5"
-        "8.8.8.8"
-      ];
-    };
-  };
+  # services.dnsmasq = {
+  #   enable = true;
+  #   settings = {
+  #     server = [
+  #       "/tencentyun.com/183.60.83.19"
+  #       "/tencentyun.com/183.60.82.98"
+  #       "119.29.29.29"
+  #       "223.5.5.5"
+  #       "8.8.8.8"
+  #     ];
+  #   };
+  # };
 
   systemd.services.dnsmasq = {
     requires = ["network.target"];
