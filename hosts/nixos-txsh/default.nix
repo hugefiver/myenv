@@ -107,6 +107,7 @@
     ++ (
       with unstable; [
         xray
+        restic
       ]
     );
 
