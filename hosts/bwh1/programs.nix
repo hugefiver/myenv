@@ -47,7 +47,7 @@
     unitConfig.Type = "simple";
 
     preStart = "${pkgs.bash}/bin/bash -c 'sleep 5; mkdir -p /root/hath/{cache,true,download};'";
-    postStop = "${pkgs.bash}/bin/bash -c '/run/current-system/sw/bin/umount /root/hath/{cache,true,download};'";
+    # postStop = "${pkgs.bash}/bin/bash -c '/run/current-system/sw/bin/umount /root/hath/{cache,true,download};'";
     serviceConfig = {
       RemainAfterExit = true;
       ExecStart = "${pkgs.writeShellScript "mount_hath.sh" ''
@@ -56,7 +56,7 @@
           /run/current-system/sw/bin/mount --bind /mnt/hath/''${dir} /root/hath/''${dir};
         done
       ''}";
-      ExecStop = "${pkgs.bash}/bin/bash -c 'umount /root/hath/{cache,true,download}'";
+      ExecStop = "${pkgs.bash}/bin/bash -c '/run/current-system/sw/bin/umount /root/hath/{cache,true,download}'";
     };
   };
 
