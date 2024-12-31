@@ -29,11 +29,11 @@
       ${unstable.rclone}/bin/rclone mount \
       --config /root/.config/rclone/rclone.conf \
       cloud:/hath /mnt/hath \
-      --vfs-read-chunk-size 10M --vfs-read-chunk-size-limit 200M \
+      --vfs-read-chunk-size 128M --vfs-read-chunk-size-limit 512M \
       --cache-dir /tmp/hath-cache --vfs-cache-mode full \
-      --vfs-cache-mode full \
+      --vfs-cache-mode full --vfs-fast-fingerprint \
       --vfs-cache-max-size 15G --vfs-cache-max-age 72h \
-      --no-checksum --no-modtime \
+      --no-checksum --no-modtime --vfs-refresh \
       --transfers 16
     '';
   };
@@ -46,7 +46,8 @@
 
     unitConfig.Type = "simple";
 
-    preStart = "${pkgs.bash}/bin/bash -c 'sleep 10; mkdir -p /root/hath/{cache,true,download}'";
+    preStart = "${pkgs.bash}/bin/bash -c 'sleep 5; mkdir -p /root/hath/{cache,true,download};'";
+    postStop = "${pkgs.bash}/bin/bash -c '/run/current-system/sw/bin/umount /root/hath/{cache,true,download};'";
     serviceConfig = {
       RemainAfterExit = true;
       ExecStart = "${pkgs.writeShellScript "mount_hath.sh" ''
