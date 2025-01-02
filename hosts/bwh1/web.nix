@@ -35,6 +35,11 @@
     certs = {
       "test" = {
         domain = "prk.rurilove.moe";
+        dnsProvider = "cloudflare";
+        credentialFiles = {
+          "CF_DNS_API_TOKEN_FILE" = "/root/.pri/cf_api_key";
+        };
+        webroot = null;
       };
     };
   };
