@@ -101,6 +101,7 @@
   virtualisation.docker = {
     enable = true;
     storageDriver = "btrfs";
+    liveRestore = true;
   };
 
   users.extraGroups.docker.members = ["root" "hugefiver"];
