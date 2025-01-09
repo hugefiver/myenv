@@ -87,8 +87,12 @@
 
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [22 80 443];
-    allowedUDPPorts = [443];
+    allowedTCPPorts = [22 80 443 3478];
+    allowedUDPPorts = [443 3478];
+    allowedUDPPortRanges = [
+      # { from = 49152; to = 65535; }
+      { from = 52000; to = 57000; }
+    ];
   };
 
   services.fail2ban = {
