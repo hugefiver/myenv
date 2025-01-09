@@ -23,6 +23,8 @@
 
       ./disk.nix
       ./user.nix
+
+      ./web.nix
     ]
     ++ lib.optional (builtins.pathExists /etc/nixos/local/txjp.nix) [/etc/nixos/local/txjp.nix];
 
