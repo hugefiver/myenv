@@ -14,6 +14,10 @@
     enable = true;
     # package = unstable.caddy;
 
+    globalConfig = ''
+      auto_https ignore_loaded_certs
+    '';
+
     extraConfig = ''
       import conf.d/*
     '';
