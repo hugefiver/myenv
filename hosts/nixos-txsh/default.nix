@@ -132,6 +132,13 @@
 
   services.fail2ban = {
     enable = true;
+
+    jails = {
+      sshd.settings = {
+        enabled = true;
+        port = "2422";
+      };
+    };
   };
 
   virtualisation.docker = {
