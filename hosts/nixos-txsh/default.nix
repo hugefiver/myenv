@@ -114,6 +114,7 @@
   services.openssh = {
     enable = true;
     settings = {
+      Port = 2422;
       PasswordAuthentication = false;
       #PermitRootLogin = "yes";
       PermitRootLogin = "prohibit-password";
@@ -125,7 +126,7 @@
 
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [22 3478];
+    allowedTCPPorts = [22 2422 3478];
     allowedUDPPorts = [3478];
   };
 
