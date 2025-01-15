@@ -104,8 +104,13 @@
       };
     };
   };
-  
+
   services.logrotate.enable = true;
+
+
+  services.journald.extraConfig = ''
+    Compress=yes
+  '';
 
   virtualisation.docker = {
     enable = true;
