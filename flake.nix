@@ -2,10 +2,12 @@
   description = "Hugefiver's NixOS configure file";
 
   inputs = {
-    home-manager.url = "github:nix-community/home-manager";
     # nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable-small";
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11-small";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
