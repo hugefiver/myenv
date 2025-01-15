@@ -104,6 +104,8 @@
       };
     };
   };
+  
+  services.logrotate.enable = true;
 
   virtualisation.docker = {
     enable = true;
