@@ -63,6 +63,16 @@
     # "183.60.82.98"
   ];
 
+  networking.enableIPv6 = true;
+  networking.useDHCP = true;
+  # networking.dhcpcd.persistent = true;
+  # networking.dhcpcd.IPv6rs = false;
+  # networking.defaultGateway6 = {
+  #   address = "240d:c000:f06f:8e00:8c88:73b4:caa:0";
+  #   # gateway = "fd76:3600:201:4f00:0:9e59:b932:d3c5";
+  #   interface = "ens3";
+  # };
+
   environment.variables = {
     EDITOR = "vim";
   };
