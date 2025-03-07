@@ -15,7 +15,7 @@
   };
 
   systemd.services.rclone-mount = {
-    enable = true;
+    # enable = true;
     description = "Mount Rclone driver when starup.";
 
     wantedBy = ["multi-user.target"];
@@ -39,7 +39,7 @@
   };
 
   systemd.services.mount-hath = {
-    enable = true;
+    # enable = true;
     wantedBy = ["multi-user.target"];
     after = ["rclone-mount.service"];
     requires = ["rclone-mount.service"];

@@ -60,6 +60,12 @@
   # boot.loader.grub.device = "/dev/vda"; # or "nodev" for efi only
   # fileSystems."/".device = lib.mkDefault "/dev/vda";
 
+  boot.kernel.sysctl."net.ipv4.tcp_congestion_control" = "bbr";
+  boot.kernel.sysctl."net.core.rmem_max" = 16777216;
+  boot.kernel.sysctl."net.core.wmem_max" = 16777216;
+  boot.kernel.sysctl."net.ipv4.tcp_rmem" = "4096 87380 16777216";
+  boot.kernel.sysctl."net.ipv4.tcp_wmem" = "4096 87380 16777216";
+
   networking.hostName = "nixos-txsh"; # Define your hostname.
   # Pick only one of the below networking options.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
