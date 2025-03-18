@@ -33,14 +33,14 @@
     defaults.webroot = "/var/lib/acme/acme-challenge";
 
     certs = {
-      "test" = {
-        domain = "prk.rurilove.moe";
-        dnsProvider = "cloudflare";
-        credentialFiles = {
-          "CF_DNS_API_TOKEN_FILE" = "/root/.pri/cf_api_key";
-        };
-        webroot = null;
-      };
+      # "test" = {
+      #   domain = "prk.rurilove.moe";
+      #   dnsProvider = "cloudflare";
+      #   credentialFiles = {
+      #     "CF_DNS_API_TOKEN_FILE" = "/root/.pri/cf_api_key";
+      #   };
+      #   webroot = null;
+      # };
     };
   };
   users.extraGroups.acme.members = ["root"];
