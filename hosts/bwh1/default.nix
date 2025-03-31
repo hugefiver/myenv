@@ -6,7 +6,7 @@
   unstable,
   system,
   ...
-}@args: {
+} @ args: {
   _module.args = {
     inherit unstable;
   };
@@ -84,8 +84,8 @@
 
   services.openssh = {
     enable = true;
+    ports = [26474];
     settings = {
-      Port = 26474;
       PasswordAuthentication = false;
       PermitRootLogin = "prohibit-password";
       AllowUsers = ["root" "hugefiver"];
@@ -102,7 +102,7 @@
 
   services.fail2ban = {
     enable = true;
-    
+
     jails = {
       sshd.settings = {
         enabled = true;
@@ -112,7 +112,6 @@
   };
 
   services.logrotate.enable = true;
-
 
   services.journald.extraConfig = ''
     Compress=yes

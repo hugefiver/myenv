@@ -91,6 +91,7 @@
 
   services.openssh = {
     enable = true;
+    ports = [2622];
     settings = {
       Port = 2622;
       PasswordAuthentication = false;

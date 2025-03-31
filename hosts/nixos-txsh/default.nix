@@ -120,8 +120,8 @@
 
   services.openssh = {
     enable = true;
+    ports = [2422];
     settings = {
-      Port = 2422;
       PasswordAuthentication = false;
       #PermitRootLogin = "yes";
       PermitRootLogin = "prohibit-password";
