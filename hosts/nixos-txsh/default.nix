@@ -94,11 +94,11 @@
   #   };
   # };
 
-  systemd.services.dnsmasq = {
-    requires = ["network.target"];
-    wants = ["systemd-networkd-wait-online.service" "network-online.target"];
-    after = ["systemd-networkd-wait-online.service" "network-online.target"];
-  };
+  # systemd.services.dnsmasq = {
+  #   requires = ["network.target"];
+  #   wants = ["systemd-networkd-wait-online.service" "network-online.target"];
+  #   after = ["systemd-networkd-wait-online.service" "network-online.target"];
+  # };
 
   environment.variables = {
     EDITOR = "vim";
