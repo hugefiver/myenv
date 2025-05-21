@@ -135,6 +135,9 @@
     enable = true;
     allowedTCPPorts = [22 2422 3478];
     allowedUDPPorts = [3478];
+    allowedUDPPortRanges = [
+      { from = 49152; to = 65535; }
+    ];
   };
 
   services.fail2ban = {
