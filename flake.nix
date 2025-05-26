@@ -24,6 +24,16 @@
     ...
   } @ inputs: let
     mkPkgs = nixpkgs: system: import nixpkgs {inherit system;};
+    default = {
+      config,
+      pkgs,
+      lib,
+      ...
+    }: {
+      environment.systemPackages = lib.mkAfter (with pkgs; [
+        nixos-rebuild-ng
+      ]);
+    };
   in {
     nixosConfigurations = {
       nixos-txsh = nixpkgs.lib.nixosSystem rec {
@@ -31,12 +41,14 @@
 
         specialArgs = {
           inherit self inputs system;
-          pkgs = mkPkgs nixpkgs system;
 
+          # pkgs = mkPkgs nixpkgs system;
           unstable = mkPkgs nixpkgs system;
         };
 
         modules = [
+          # nixpkgs.nixosModules.readOnlyPkgs
+
           ./hosts/nixos-txsh
         ];
       };
@@ -47,11 +59,14 @@
         specialArgs = {
           inherit self inputs system;
 
-          pkgs = mkPkgs nixpkgs system;
+          # pkgs = mkPkgs nixpkgs system;
           unstable = mkPkgs nixpkgs-unstable system;
         };
 
         modules = [
+          # nixpkgs.nixosModules.readOnlyPkgs
+
+          default
           ./hosts/nixos-txjp
         ];
       };
@@ -62,11 +77,14 @@
         specialArgs = {
           inherit self inputs system;
 
-          pkgs = mkPkgs nixpkgs system;
+          # pkgs = mkPkgs nixpkgs system;
           unstable = mkPkgs nixpkgs-unstable system;
         };
 
         modules = [
+          # nixpkgs.nixosModules.readOnlyPkgs
+
+          default
           ./hosts/bwh1
         ];
       };
