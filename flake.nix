@@ -88,6 +88,24 @@
           ./hosts/bwh1
         ];
       };
+
+      cc-us = nixpkgs.lib.nixosSystem rec {
+        system = "x86_64-linux";
+
+        specialArgs = {
+          inherit self inputs system;
+
+          # pkgs = mkPkgs nixpkgs system;
+          unstable = mkPkgs nixpkgs-unstable system;
+        };
+
+        modules = [
+          # nixpkgs.nixosModules.readOnlyPkgs
+
+          default
+          ./hosts/cc-us
+        ];
+      };
     };
   };
 }
