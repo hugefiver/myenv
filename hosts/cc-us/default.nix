@@ -96,7 +96,7 @@
       PasswordAuthentication = false;
       #PermitRootLogin = "yes";
       PermitRootLogin = "prohibit-password";
-      AllowUsers = ["root" "hugefiver"];
+      AllowUsers = ["root" "hugefiver" "yan"];
 
       # LogLevel = "VERBOSE";
     };
