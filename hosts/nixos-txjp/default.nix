@@ -72,12 +72,45 @@
   networking.enableIPv6 = true;
   networking.useDHCP = true;
   # networking.dhcpcd.persistent = true;
-  # networking.dhcpcd.IPv6rs = false;
+  networking.dhcpcd.IPv6rs = false;
   # networking.defaultGateway6 = {
   #   address = "240d:c000:f06f:8e00:8c88:73b4:caa:0";
   #   # gateway = "fd76:3600:201:4f00:0:9e59:b932:d3c5";
   #   interface = "ens3";
   # };
+  systemd.network = {
+    enable = true;
+
+    networks."10-ens3" = {
+      matchConfig.Name = "ens3";
+
+      networkConfig = {
+        DHCP = "ipv4";
+        # IPv6PrivacyExtensions = "kernel";
+        IPv6AcceptRA = false;
+        # LinkLocalAddressing = "ipv6";
+      };
+
+      address = [
+        "240d:c000:f06f:9200:8c88:73b4:caa:0"
+        # "fd76:3600:201:4f00:0:9f20:c705:c801/128"
+      ];
+
+      # gateway = [
+      #   "fe80::feee:ffff:feff:ffff"
+      # ];
+
+      routes = [
+        {
+          Destination = "::/0";
+          Gateway = "fe80::feee:ffff:feff:ffff";
+          GatewayOnLink = true;
+          # Metric = 128;
+        }
+      ];
+      linkConfig.RequiredForOnline = "routable";
+    };
+  };
 
   environment.variables = {
     EDITOR = "vim";
@@ -108,7 +141,10 @@
     allowedTCPPorts = [22 2622 80 443 3478 5349];
     allowedUDPPorts = [443 3478 5349];
     allowedUDPPortRanges = [
-      { from = 49152; to = 65535; }
+      {
+        from = 49152;
+        to = 65535;
+      }
       # { from = 52000; to = 57000; }
     ];
   };
