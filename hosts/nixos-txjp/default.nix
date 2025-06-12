@@ -86,7 +86,7 @@
 
       networkConfig = {
         DHCP = "ipv4";
-        # IPv6PrivacyExtensions = "kernel";
+        IPv6PrivacyExtensions = "kernel";
         IPv6AcceptRA = false;
         # LinkLocalAddressing = "ipv6";
       };

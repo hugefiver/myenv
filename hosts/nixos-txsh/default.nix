@@ -68,6 +68,7 @@
   boot.kernel.sysctl."net.ipv4.tcp_wmem" = "4096 87380 16777216";
 
   networking.hostName = "nixos-txsh"; # Define your hostname.
+
   # Pick only one of the below networking options.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
   # networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
@@ -78,6 +79,45 @@
   #   # "183.60.83.19"
   #   # "183.60.82.98"
   # ];
+
+  networking.enableIPv6 = true;
+  networking.useDHCP = true;
+  # networking.dhcpcd.persistent = true;
+  networking.dhcpcd.IPv6rs = false;
+
+  systemd.network = {
+    enable = true;
+
+    networks."10-ens5" = {
+      matchConfig.Name = "ens5";
+
+      networkConfig = {
+        DHCP = "ipv4";
+        IPv6PrivacyExtensions = "kernel";
+        IPv6AcceptRA = false;
+        # LinkLocalAddressing = "ipv6";
+      };
+
+      address = [
+        "2402:4e00:c032:6800:8c88:73b4:caa:0"
+        # "fd76:3600:201:4f00:0:9f20:c705:c801/128"
+      ];
+
+      # gateway = [
+      #   "fe80::feee:ffff:feff:ffff"
+      # ];
+
+      routes = [
+        {
+          Destination = "::/0";
+          Gateway = "fe80::feee:ffff:feff:ffff";
+          GatewayOnLink = true;
+          # Metric = 128;
+        }
+      ];
+      linkConfig.RequiredForOnline = "routable";
+    };
+  };
 
   # services.resolved.enable = false;
 
@@ -136,7 +176,10 @@
     allowedTCPPorts = [22 2422 3478];
     allowedUDPPorts = [3478];
     allowedUDPPortRanges = [
-      { from = 49152; to = 65535; }
+      {
+        from = 49152;
+        to = 65535;
+      }
     ];
   };
 
