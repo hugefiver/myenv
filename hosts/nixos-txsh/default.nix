@@ -80,8 +80,8 @@
   #   # "183.60.82.98"
   # ];
 
-  networking.enableIPv6 = true;
-  networking.useDHCP = true;
+  # networking.enableIPv6 = true;
+  networking.useDHCP = false;
   # networking.dhcpcd.persistent = true;
   networking.dhcpcd.IPv6rs = false;
 
