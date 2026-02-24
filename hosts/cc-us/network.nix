@@ -17,7 +17,9 @@
     ```
   */
 
-   systemd.network.networks."10-eth0" = {
+  systemd.network.enable = true;
+
+  systemd.network.networks."10-eth0" = {
     matchConfig.Name = "eth0";
     address = [
       "142.171.239.148/25"
