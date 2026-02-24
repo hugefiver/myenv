@@ -161,6 +161,7 @@
   services.openssh = {
     enable = true;
     ports = [2422];
+    authorizedKeysInHomedir = true;
     settings = {
       PasswordAuthentication = false;
       #PermitRootLogin = "yes";

@@ -125,6 +125,7 @@
   services.openssh = {
     enable = true;
     ports = [2622];
+    authorizedKeysInHomedir = true;
     settings = {
       Port = 2622;
       PasswordAuthentication = false;
