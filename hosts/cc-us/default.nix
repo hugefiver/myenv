@@ -84,7 +84,14 @@
   time.timeZone = "Asia/Shanghai";
 
   environment.systemPackages = lib.mkAfter (with pkgs; [
+    tmux
+
   ]);
+
+  programs.java = {
+    enable = true;
+    programs.java.package = pkgs.jre_headless; 
+  };
 
   # services.qemuGuest.enable = true;
 
@@ -128,6 +135,8 @@
 
   services.journald.extraConfig = ''
     Compress=yes
+    MaxRetentionSec=1week
+    SystemMaxUse=300M
   '';
 
   virtualisation.docker = {
@@ -165,5 +174,5 @@
   # and migrated your data accordingly.
   #
   # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
-  system.stateVersion = "25.05"; # Did you read the comment?
+  system.stateVersion = "25.11"; # Did you read the comment?
 }
