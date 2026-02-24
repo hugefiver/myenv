@@ -90,7 +90,7 @@
 
   programs.java = {
     enable = true;
-    programs.java.package = pkgs.jre_headless; 
+    package = pkgs.jre_headless; 
   };
 
   # services.qemuGuest.enable = true;
