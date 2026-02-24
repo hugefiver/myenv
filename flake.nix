@@ -89,7 +89,7 @@
         ];
       };
 
-      cc-us = nixpkgs.lib.nixosSystem rec {
+      nixos-ccus = nixpkgs.lib.nixosSystem rec {
         system = "x86_64-linux";
 
         specialArgs = {

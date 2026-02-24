@@ -31,6 +31,10 @@
       "142.171.239.129"
       "2607:f130:0000:0159::1"
     ];
+    networkConfig = {
+      DHCP = "no";
+      IPv6AcceptRA = false;
+    };
     # routes = [
     #   { Gateway = "142.171.239.129"; }
     #   { Gateway = "2607:f130:0000:0159::1"; }
