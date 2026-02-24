@@ -17,8 +17,8 @@
     ```
   */
 
-   systemd.network.networks."10-ens3" = {
-    matchConfig.Name = "ens3";
+   systemd.network.networks."10-eth0" = {
+    matchConfig.Name = "eth0";
     address = [
       "142.171.239.148/25"
       "2607:f130:0000:0159::359e:1e17/64"

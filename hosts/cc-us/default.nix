@@ -71,7 +71,7 @@
   ];
 
   networking.enableIPv6 = true;
-  networking.useDHCP = true;
+  # networking.useDHCP = true;
   # networking.dhcpcd.persistent = true;
   # networking.dhcpcd.wait = "ipv4";
   # networking.dhcpcd.IPv6rs = false;
