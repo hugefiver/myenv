@@ -12,6 +12,7 @@
     ../common
     ../common/personal.nix
     ../common/hyprland.nix
+    ../common/kde.nix
 
     ./disk.nix
   ];
