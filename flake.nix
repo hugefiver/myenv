@@ -13,8 +13,8 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
-    microvm.url = "github:microvm-nix/microvm.nix";
-    microvm.inputs.nixpkgs.follows = "nixpkgs";
+    # microvm.url = "github:microvm-nix/microvm.nix";
+    # microvm.inputs.nixpkgs.follows = "nixpkgs";
 
     nixos-facter-modules.url = "github:numtide/nixos-facter-modules";
   };
@@ -26,7 +26,6 @@
     nixpkgs-unstable,
     home-manager,
     disko,
-    microvm,
     ...
   } @ inputs: let
     mkPkgs = nixpkgs: system: import nixpkgs {inherit system;};
@@ -141,19 +140,6 @@
           defaultHm
         ];
       };
-
-      desktop-nuc13-installer-vm = nixpkgs.lib.nixosSystem rec {
-        inherit system specialArgs;
-        modules = [
-          ./tests/microvm/desktop-nuc13-installer.nix
-        ];
-      };
      });
-
-    packages.x86_64-linux = {
-      disko-install = inputs.disko.packages.x86_64-linux.disko-install;
-      desktop-nuc13-installer-vm =
-        self.nixosConfigurations.desktop-nuc13-installer-vm.config.microvm.declaredRunner;
-    };
   };
 }

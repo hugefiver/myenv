@@ -4,6 +4,8 @@
     ./ime.nix
   ];
   
+  home.enableNixpkgsReleaseCheck = false;
+  
   home.username = "hugefiver";
   home.homeDirectory = "/home/hugefiver";
   home.stateVersion = "25.11";
