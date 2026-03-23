@@ -28,9 +28,9 @@
 
   # used for nixos-anywhre installation
   # generate `facter.json` near this file
-  # facter.reportPath = "./facter.json";
+  # hardware.facter.reportPath = "./facter.json";
 
-  facter.reportPath =
+  hardware.facter.reportPath =
     if builtins.pathExists ./facter.json
     then "./facter.json"
     else if builtins.pathExists /etc/nixos/local/facter.json

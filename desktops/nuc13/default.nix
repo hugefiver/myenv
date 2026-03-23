@@ -23,7 +23,7 @@
   };
 
   networking.hostName = "desktop-nuc13";
-  facter.reportPath = ./facter.json;
+  hardware.facter.reportPath = ./facter.json;
 
   nixpkgs.config.allowUnfree = true;
   services.xserver.videoDrivers = [ "displaylink" "modesetting" ];

@@ -19,7 +19,7 @@
 
     ];
 
-  # facter.reportPath = ./facter.json;
+  # hardware.facter.reportPath = ./facter.json;
 
   nix.settings.substituters = lib.mkForce [
     "https://mirrors.cernet.edu.cn/nix-channels/store"

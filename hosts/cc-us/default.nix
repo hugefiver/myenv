@@ -29,10 +29,10 @@
 
   # used for nixos-anywhre installation
   # generate `facter.json` at the root of `flake.nix`
-  # facter.reportPath = "${self}/facter.json";
-  facter.reportPath = ./facter.json;
+  # hardware.facter.reportPath = "${self}/facter.json";
+  hardware.facter.reportPath = ./facter.json;
 
-  # facter.reportPath =
+  # hardware.facter.reportPath =
   #   if builtins.pathExists ./facter.json
   #   then "./facter.json"
   #   else if builtins.pathExists /etc/nixos/local/facter.json
