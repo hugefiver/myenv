@@ -61,6 +61,11 @@
   };
   i18n.supportedLocales = [ "zh_CN.UTF-8/UTF-8" "en_US.UTF-8/UTF-8" ];
 
+  environment.sessionVariables = {
+    LANG = "zh_CN.UTF-8";
+    LC_MESSAGES = "en_US.UTF-8";
+  };
+
   boot.initrd.kernelModules = [ "vfat" "nls_cp437" "nls_iso8859_1" "bcache" ];
   # services.btrfs.swapfile.create = {
   #   size = "8G";

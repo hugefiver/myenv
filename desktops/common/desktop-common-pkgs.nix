@@ -6,6 +6,8 @@
     tmux
     curl
     # curlWithGnuTls
+
+    home-manager
   ];
 
   # enable bash history search

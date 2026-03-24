@@ -58,5 +58,8 @@
     videos = "${config.home.homeDirectory}/Videos";
   };
 
+  # Force overwrite if file already exists outside home-manager management
+  xdg.configFile."user-dirs.dirs".force = true;
+
   programs.home-manager.enable = true;
 }
