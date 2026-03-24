@@ -24,26 +24,21 @@
 
   networking.hostName = "desktop-nuc13";
   hardware.facter.reportPath = ./facter.json;
+  hardware.enableRedistributableFirmware = true;
+
+  systemd.network.wait-online.enable = false;
 
   nixpkgs.config.allowUnfree = true;
   services.xserver.videoDrivers = [ "displaylink" "modesetting" ];
   services.lvm.boot.thin.enable = true;
 
   boot.extraModulePackages = [ config.boot.kernelPackages.evdi ];
-  # boot.kernelModules = [
-  #   "evdi"
-  #   "dm-cache"
-  #   "dm-cache-smq"
-  #   "dm-cache-mq"
-  #   "dm-cache-cleaner"
-  # ];
-  boot.initrd.kernelModules = [
+  boot.kernelModules = [
     "evdi"
-    "dm-cache-default"
-    # "dm-cache"
-    # "dm-cache-smq"
-    # "dm-cache-mq"
-    # "dm-cache-cleaner"
+  ];
+  boot.initrd.kernelModules = [
+    "dm-cache"
+    "dm-cache-smq"
   ];
   nixpkgs.overlays = [
     (final: prev: {
