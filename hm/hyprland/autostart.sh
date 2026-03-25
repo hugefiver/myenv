@@ -14,6 +14,7 @@ dbus-update-activation-environment --systemd --all >/dev/null 2>&1 || true
 
 run_once '^waybar$' waybar
 run_once '^dunst$' dunst
+run_once '^hyprpolkitagent$' hyprpolkitagent
 run_once '^nm-applet$' nm-applet --indicator
 
 if ! pgrep -x swww-daemon >/dev/null 2>&1; then

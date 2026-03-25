@@ -56,7 +56,6 @@
       "x-scheme-handler/http" = [ "org.kde.falkon.desktop" ];
       "x-scheme-handler/https" = [ "org.kde.falkon.desktop" ];
 
-      "x-scheme-handler/tg" = [ "org.telegram.desktop.desktop" ];
       "inode/directory" = [ "org.kde.dolphin.desktop" ];
       "application/x-7z-compressed" = [ "org.kde.ark.desktop" ];
       "application/x-7z-compressed-tar" = [ "org.kde.ark.desktop" ];
@@ -83,10 +82,11 @@
       "application/zstd" = [ "org.kde.ark.desktop" ];
       "application/x-zstd-compressed-tar" = [ "org.kde.ark.desktop" ];
 
-      "message/rfc822" = [ "thunderbird.desktop" ];
-      "x-scheme-handler/mailto" = [ "thunderbird.desktop" ];
-      "text/calendar" = [ "thunderbird.desktop" ];
-      "text/x-vcard" = [ "thunderbird.desktop" ];
+      # "x-scheme-handler/tg" = [ "org.telegram.desktop.desktop" ];
+      # "message/rfc822" = [ "thunderbird.desktop" ];
+      # "x-scheme-handler/mailto" = [ "thunderbird.desktop" ];
+      # "text/calendar" = [ "thunderbird.desktop" ];
+      # "text/x-vcard" = [ "thunderbird.desktop" ];
     };
   };
 }
