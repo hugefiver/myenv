@@ -25,6 +25,8 @@
     fzf
     ripgrep
     git-credential-manager
+    firefox
+    vscode
   ];
 
   home.sessionVariables = {
