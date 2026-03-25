@@ -17,11 +17,6 @@
     ];
   };
 
-  home.sessionVariables = {
-    GTK_IM_MODULE = "fcitx";
-    QT_IM_MODULE = "fcitx";
-    SDL_IM_MODULE = "fcitx";
-    INPUT_METHOD = "fcitx";
-    XMODIFIERS = "@im=fcitx";
-  };
+  # KDE Wayland 通过 Wayland 输入法协议与 fcitx5 通信，
+  # 不需要也不应该设置 X11 遗留的 IM 环境变量。
 }
