@@ -34,7 +34,7 @@
 
   boot.extraModulePackages = [ config.boot.kernelPackages.evdi ];
   boot.extraModprobeConfig = ''
-    options evdi initial_device_count=1
+    options evdi initial_device_count=0
   '';
   boot.kernelModules = [
     "evdi"

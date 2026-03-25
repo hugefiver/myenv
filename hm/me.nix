@@ -49,6 +49,9 @@
 
   programs.zsh = {
     enable = true;
+    shellAliases = {
+      hm = "home-manager";
+    };
     oh-my-zsh = {
       enable = true;
       package = unstable.oh-my-zsh;
