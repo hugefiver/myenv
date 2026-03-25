@@ -9,6 +9,7 @@ in {
   networking.networkmanager = {
     enable = true;
     wifi.backend = lib.mkDefault "iwd";
+    wifi.powersave = false;
     ensureProfiles = {
       environmentFiles = lib.optional (builtins.pathExists localEnvFile) (toString localEnvFile);
       profiles =
