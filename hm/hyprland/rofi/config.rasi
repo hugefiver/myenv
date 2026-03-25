@@ -8,7 +8,7 @@ configuration {
   window-format: "{w} · {c} · {t}";
   hover-select: true;
   me-select-entry: "";
-  me-accept-entry: "MousePrimary";
+  me-accept-entry: "";
 }
 
 * {
