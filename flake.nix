@@ -49,7 +49,7 @@
 
         mkSpecialArgs = system: {
           inherit self inputs system;
-          unstable = mkPkgs nixpkgs-unstable system {};
+          unstable = mkPkgs nixpkgs-unstable system { config.allowUnfree = true; };
         };
 
         commonNixosModule = {

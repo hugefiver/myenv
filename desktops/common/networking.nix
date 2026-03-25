@@ -2,9 +2,9 @@
   localProfilesFile = /etc/nixos/local/network-manager-profiles.nix;
   localEnvFile = /etc/nixos/local/network-manager.env;
 in {
-  # networking.networkmanager.wait-online 在部分 nixpkgs 版本中不存在，
   # 直接通过 systemd 禁用该服务以避免启动等待超时。
   systemd.services.NetworkManager-wait-online.enable = false;
+  systemd.services.NetworkManager-wait-online-initrd.enable = false;
 
   networking.networkmanager = {
     enable = true;
