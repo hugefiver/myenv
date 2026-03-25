@@ -5,7 +5,6 @@ in {
   networking.networkmanager = {
     enable = true;
     wifi.backend = lib.mkDefault "iwd";
-    wait-online.enable = false;
     ensureProfiles = {
       environmentFiles = lib.optional (builtins.pathExists localEnvFile) (toString localEnvFile);
       profiles =
