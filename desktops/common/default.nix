@@ -16,6 +16,7 @@
       inputs.nixos-facter-modules.nixosModules.facter
 
       (import ./desktop-common-pkgs.nix {pkgs = unstable;})
+      ./networking.nix
 
     ];
 
@@ -42,7 +43,6 @@
   };
   boot.loader.efi.canTouchEfiVariables = true;
   # networking.hostName = "hostname";
-  networking.networkmanager.enable = true;
 
   time.timeZone = "Asia/Shanghai";
   i18n.defaultLocale = "zh_CN.UTF-8";
@@ -64,6 +64,7 @@
   environment.sessionVariables = {
     LANG = "zh_CN.UTF-8";
     LC_MESSAGES = "en_US.UTF-8";
+    NIXOS_OZONE_WL = "1";
   };
 
   boot.initrd.kernelModules = [ "vfat" "nls_cp437" "nls_iso8859_1" "bcache" ];
@@ -92,11 +93,21 @@
   };
 
   fonts.packages = with pkgs; [
+    nerd-fonts.caskaydia-cove
     noto-fonts
     noto-fonts-cjk-sans
     noto-fonts-cjk-serif
     noto-fonts-color-emoji
   ];
+
+  fonts.fontconfig.defaultFonts = {
+    monospace = [
+      "CaskaydiaCove Nerd Font Mono"
+    ];
+    emoji = [
+      "Noto Color Emoji"
+    ];
+  };
 
   virtualisation.docker = {
     enable = true;

@@ -1,0 +1,110 @@
+# 这是 Hyprland 的主体配置，按键单独放在 keybinds.conf，方便你直接改。
+
+$mod = SUPER
+$terminal = wezterm
+$fileManager = dolphin
+$menu = rofi -show drun -show-icons
+
+exec-once = ~/.config/hypr/autostart.sh
+
+env = XCURSOR_SIZE,24
+env = HYPRCURSOR_SIZE,24
+env = NIXOS_OZONE_WL,1
+env = XDG_CURRENT_DESKTOP,Hyprland
+env = XDG_SESSION_TYPE,wayland
+
+input {
+	kb_layout = us
+	follow_mouse = 1
+	repeat_rate = 45
+	repeat_delay = 280
+
+	touchpad {
+		natural_scroll = yes
+		tap-to-click = yes
+		scroll_factor = 0.9
+	}
+}
+
+general {
+	gaps_in = 5
+	gaps_out = 12
+	border_size = 2
+	layout = dwindle
+	resize_on_border = true
+	allow_tearing = false
+	col.active_border = rgba(7dc4e4ff) rgba(b4befeef) rgba(cba6f7ff) 45deg
+	col.inactive_border = rgba(313244cc)
+}
+
+decoration {
+	rounding = 18
+	active_opacity = 0.96
+	inactive_opacity = 0.91
+	fullscreen_opacity = 1.0
+	dim_inactive = false
+
+	shadow {
+		enabled = true
+		range = 28
+		render_power = 3
+		color = rgba(0000004f)
+	}
+
+	blur {
+		enabled = true
+		size = 10
+		passes = 3
+		new_optimizations = true
+		xray = false
+		noise = 0.02
+	}
+}
+
+animations {
+	enabled = yes
+	bezier = smoothOut, 0.22, 1, 0.36, 1
+	bezier = smoothIn, 0.12, 0, 0.39, 0
+	bezier = overshot, 0.16, 1, 0.3, 1.16
+	bezier = almostLinear, 0.4, 0.8, 0.2, 1.0
+
+	animation = windows, 1, 6, overshot, popin 87%
+	animation = windowsOut, 1, 5, smoothIn, popin 87%
+	animation = border, 1, 10, default
+	animation = fade, 1, 6, smoothOut
+	animation = workspaces, 1, 6, almostLinear, slide
+}
+
+dwindle {
+	preserve_split = true
+	smart_split = true
+}
+
+master {
+	new_status = master
+}
+
+misc {
+	disable_hyprland_logo = true
+	disable_splash_rendering = true
+	focus_on_activate = true
+	mouse_move_enables_dpms = true
+	key_press_enables_dpms = true
+	vfr = true
+}
+
+bindm = $mod, mouse:272, movewindow
+bindm = $mod, mouse:273, resizewindow
+
+bindel = , XF86MonBrightnessUp, exec, brightnessctl s 10%+
+bindel = , XF86MonBrightnessDown, exec, brightnessctl s 10%-
+bindel = , XF86AudioRaiseVolume, exec, wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+
+bindel = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindel = , XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindl = , XF86AudioPlay, exec, playerctl play-pause
+bindl = , XF86AudioNext, exec, playerctl next
+bindl = , XF86AudioPrev, exec, playerctl previous
+
+windowrulev2 = float,class:^(org.pulseaudio.pavucontrol)$
+windowrulev2 = float,class:^(nm-connection-editor)$
+windowrulev2 = size 60% 70%,class:^(nm-connection-editor)$

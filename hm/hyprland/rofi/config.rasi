@@ -1,0 +1,89 @@
+configuration {
+  modi: "drun,window,run";
+  show-icons: true;
+  icon-theme: "breeze-dark";
+  font: "CaskaydiaCove Nerd Font Mono 12";
+  terminal: "wezterm";
+  drun-display-format: "{name}";
+  window-format: "{w} · {c} · {t}";
+  hover-select: true;
+  me-select-entry: "MousePrimary";
+  me-accept-entry: "MousePrimary";
+}
+
+* {
+  bg: rgba(17, 17, 27, 0.92);
+  bg-alt: rgba(49, 50, 68, 0.82);
+  fg: #dde4ff;
+  muted: #a6adc8;
+  border: #89dceb;
+  selected: #cba6f7;
+  urgent: #f38ba8;
+  accent: #89b4fa;
+  font: "CaskaydiaCove Nerd Font Mono 12";
+}
+
+window {
+  location: center;
+  width: 44%;
+  border: 2px;
+  border-color: @border;
+  border-radius: 22px;
+  background-color: @bg;
+}
+
+mainbox {
+  spacing: 12px;
+  padding: 16px;
+  background-color: transparent;
+}
+
+inputbar {
+  padding: 14px;
+  border: 0 0 1px 0;
+  border-color: @bg-alt;
+  children: [ prompt, entry ];
+}
+
+prompt {
+  text-color: @accent;
+  str: "󰍉";
+  margin: 0 10px 0 0;
+}
+
+entry {
+  text-color: @fg;
+  placeholder-color: @muted;
+  placeholder: "Run, search, or switch";
+}
+
+listview {
+  lines: 9;
+  columns: 1;
+  fixed-height: false;
+  scrollbar: false;
+  padding: 4px 0;
+}
+
+element {
+  padding: 12px;
+  border-radius: 14px;
+}
+
+element selected {
+  background-color: @bg-alt;
+  text-color: @fg;
+}
+
+element-text {
+  text-color: inherit;
+}
+
+element-icon {
+  size: 1.35em;
+  margin: 0 12px 0 2px;
+}
+
+message {
+  enabled: false;
+}

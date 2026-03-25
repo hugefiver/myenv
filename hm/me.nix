@@ -1,7 +1,15 @@
 {self, pkgs, unstable, config, ...} : {
 
   imports = [
+    ./hyprland
+    ./kde.nix
+
+    ./wezterm.nix
+    ./emacs.nix
+
+    ./hidpi.nix
     ./ime.nix
+    ./xdg.nix
   ];
   
   home.enableNixpkgsReleaseCheck = false;
@@ -15,10 +23,16 @@
     htop
     git
     fzf
-    emacs
     ripgrep
     git-credential-manager
   ];
+
+  home.sessionVariables = {
+    BROWSER = "falkon";
+    EDITOR = "emacsclient -c -a emacs";
+    TERMINAL = "wezterm";
+    VISUAL = "emacsclient -c -a emacs";
+  };
 
   programs.git = {
     enable = true;
@@ -61,5 +75,7 @@
   # Force overwrite if file already exists outside home-manager management
   xdg.configFile."user-dirs.dirs".force = true;
 
-  programs.home-manager.enable = true;
+  programs.home-manager = {
+    enable = true;
+  };
 }

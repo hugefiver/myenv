@@ -1,0 +1,98 @@
+* {
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+  font-family: "CaskaydiaCove Nerd Font Mono", "Noto Sans CJK SC", "Noto Color Emoji";
+  font-size: 13px;
+}
+
+window#waybar {
+  background: transparent;
+  color: #dce3ff;
+}
+
+tooltip {
+  background: rgba(17, 17, 27, 0.96);
+  border: 1px solid rgba(137, 180, 250, 0.75);
+  border-radius: 14px;
+}
+
+#custom-launcher,
+#workspaces,
+#window,
+#clock,
+#cpu,
+#memory,
+#temperature,
+#pulseaudio,
+#network,
+#battery,
+#tray,
+#custom-power {
+  margin: 0 4px;
+  padding: 0 16px;
+  min-height: 42px;
+  background: linear-gradient(180deg, rgba(49, 50, 68, 0.94), rgba(30, 30, 46, 0.88));
+  border: 1px solid rgba(137, 180, 250, 0.16);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+
+#workspaces button {
+  padding: 0 12px;
+  margin: 6px 4px;
+  color: #a6adc8;
+  border-radius: 12px;
+}
+
+#workspaces button.active {
+  color: #11111b;
+  background: linear-gradient(90deg, #7dc4e4, #b4befe 55%, #cba6f7);
+  box-shadow: 0 6px 18px rgba(137, 180, 250, 0.35);
+}
+
+#workspaces button:hover {
+  color: #cdd6f4;
+  background: rgba(137, 180, 250, 0.18);
+  box-shadow: inherit;
+  text-shadow: inherit;
+}
+#custom-launcher,
+#custom-power {
+  padding: 0 18px;
+  color: #11111b;
+  background: linear-gradient(135deg, #89dceb, #89b4fa 58%, #cba6f7);
+}
+
+#window {
+  min-width: 280px;
+}
+
+#clock {
+  color: #f9e2af;
+  font-weight: 700;
+}
+
+#pulseaudio {
+  color: #89dceb;
+}
+
+#network {
+  color: #94e2d5;
+}
+
+#battery {
+  color: #a6e3a1;
+}
+
+#battery.warning {
+  color: #f9e2af;
+}
+
+#battery.critical {
+  color: #f38ba8;
+}
+
+#tray {
+  padding-right: 12px;
+}

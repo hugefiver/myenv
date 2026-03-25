@@ -1,0 +1,39 @@
+* {
+  background-image: none;
+  box-shadow: none;
+  font-family: "CaskaydiaCove Nerd Font Mono", "Noto Sans CJK SC", "Noto Color Emoji";
+  transition: 180ms ease;
+}
+
+window {
+  background: rgba(17, 17, 27, 0.74);
+}
+
+button {
+  margin: 22px;
+  min-width: 132px;
+  min-height: 132px;
+  border-radius: 30px;
+  border: 1px solid rgba(137, 180, 250, 0.22);
+  background: linear-gradient(180deg, rgba(49, 50, 68, 0.96), rgba(30, 30, 46, 0.92));
+  color: #dce3ff;
+  font-size: 30px;
+}
+
+button:focus,
+button:active,
+button:hover {
+  background: linear-gradient(135deg, rgba(125, 196, 228, 0.92), rgba(180, 190, 254, 0.92), rgba(203, 166, 247, 0.92));
+  color: #11111b;
+  border-color: rgba(205, 214, 244, 0.6);
+}
+
+#lock,
+#logout,
+#suspend,
+#reboot,
+#shutdown {
+  background-repeat: no-repeat;
+  background-position: center 30px;
+  background-size: 34px;
+}

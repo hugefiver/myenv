@@ -7,6 +7,8 @@
     nixpkgs-big.url = "github:nixos/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
+    flake-parts.url = "github:hercules-ci/flake-parts";
+
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -19,127 +21,120 @@
     nixos-facter-modules.url = "github:numtide/nixos-facter-modules";
   };
 
-  outputs = {
+  outputs = inputs@{
     self,
+    flake-parts,
     nixpkgs,
     nixpkgs-big,
     nixpkgs-unstable,
     home-manager,
-    disko,
     ...
-  } @ inputs: let
-    mkPkgs = nixpkgs: system: import nixpkgs {inherit system;};
-    default = {
-      config,
-      pkgs,
-      lib,
-      ...
-    }: {
-      # environment.systemPackages = lib.mkAfter (with pkgs; [
-      #   nixos-rebuild-ng
-      # ]);
-    };
-    defaultHm = {
-      self,
-      unstable,
-      ...
-    }: {
-      imports = [
-        home-manager.nixosModules.home-manager
+  }:
+    let
+      supportedSystems = [
+        "x86_64-linux"
       ];
+      defaultSystem = builtins.head supportedSystems;
+    in
+      flake-parts.lib.mkFlake {inherit inputs;} ({...}: let
+        inherit (nixpkgs) lib;
 
-      home-manager.extraSpecialArgs = {
-        inherit self unstable;
-      };
-      home-manager.users.hugefiver = import ./hm/me.nix;
-    };
-  in {
-    nixosConfigurations = {
-      nixos-txsh = nixpkgs.lib.nixosSystem rec {
-        system = "x86_64-linux";
+        mkPkgs = nixpkgsInput: system: extraAttrs:
+          import nixpkgsInput (
+            {
+              inherit system;
+            }
+            // extraAttrs
+          );
 
-        specialArgs = {
+        mkSpecialArgs = system: {
           inherit self inputs system;
-
-          # pkgs = mkPkgs nixpkgs system;
-          unstable = mkPkgs nixpkgs-unstable system;
+          unstable = mkPkgs nixpkgs-unstable system {};
         };
 
-        modules = [
-          # nixpkgs.nixosModules.readOnlyPkgs
-
-          ./hosts/nixos-txsh
-        ];
-      };
-
-      nixos-txjp = nixpkgs.lib.nixosSystem rec {
-        system = "x86_64-linux";
-
-        specialArgs = {
-          inherit self inputs system;
-
-          unstable = mkPkgs nixpkgs-unstable system;
+        commonNixosModule = {
+          ...
+        }: {
+          # environment.systemPackages = lib.mkAfter (with pkgs; [
+          #   nixos-rebuild-ng
+          # ]);
         };
 
-        modules = [
-          # nixpkgs.nixosModules.readOnlyPkgs
+        mkNixos = {
+          modules,
+          nixpkgsInput ? nixpkgs,
+          system ? defaultSystem,
+        }:
+          nixpkgsInput.lib.nixosSystem {
+            inherit modules system;
+            specialArgs = mkSpecialArgs system;
+          };
 
-          default
-          ./hosts/nixos-txjp
-        ];
-      };
+        mkHome = system:
+          home-manager.lib.homeManagerConfiguration {
+            pkgs = mkPkgs nixpkgs-big system {
+              config.allowUnfree = true;
+              overlays = [
+                (final: prev: {
+                  xrdb = prev.xorg.xrdb;
+                })
+              ];
+            };
 
-      bwh1 = nixpkgs.lib.nixosSystem rec {
-        system = "x86_64-linux";
+            extraSpecialArgs = mkSpecialArgs system;
 
-        specialArgs = {
-          inherit self inputs system;
+            modules = [
+              ./hm/me.nix
+            ];
+          };
 
-          unstable = mkPkgs nixpkgs-unstable system;
+        nixosHosts = {
+          nixos-txsh = {
+            modules = [
+              ./hosts/nixos-txsh
+            ];
+          };
+
+          nixos-txjp = {
+            modules = [
+              commonNixosModule
+              ./hosts/nixos-txjp
+            ];
+          };
+
+          bwh1 = {
+            modules = [
+              commonNixosModule
+              ./hosts/bwh1
+            ];
+          };
+
+          nixos-ccus = {
+            modules = [
+              commonNixosModule
+              ./hosts/cc-us
+            ];
+          };
+
+          desktop-nuc13 = {
+            nixpkgsInput = nixpkgs-big;
+            modules = [
+              ./desktops/nuc13
+            ];
+          };
         };
 
-        modules = [
-          # nixpkgs.nixosModules.readOnlyPkgs
+        desktopHome = mkHome defaultSystem;
+      in {
+        systems = supportedSystems;
 
-          default
-          ./hosts/bwh1
-        ];
-      };
+        flake = {
+          nixosConfigurations = lib.mapAttrs (_: host: mkNixos host) nixosHosts;
 
-      nixos-ccus = nixpkgs.lib.nixosSystem rec {
-        system = "x86_64-linux";
-
-        specialArgs = {
-          inherit self inputs system;
-
-          unstable = mkPkgs nixpkgs-unstable system;
+          homeConfigurations = {
+            hugefiver = desktopHome;
+            "hugefiver@desktop-nuc13" = desktopHome;
+          };
         };
-
-        modules = [
-          # nixpkgs.nixosModules.readOnlyPkgs
-
-          default
-          ./hosts/cc-us
-        ];
-      };
-    } // (let
-      system = "x86_64-linux";
-      nixpkgs = nixpkgs-big;
-      unstable = mkPkgs nixpkgs-unstable system;
-      # inputs = {
-      #   inherit self nixpkgs unstable home-manager disko;
-      # };
-      specialArgs = {
-        inherit self inputs system unstable;
-      };
-     in {
-      desktop-nuc13 = nixpkgs.lib.nixosSystem rec {
-        inherit system specialArgs;
-        modules = [
-          ./desktops/nuc13
-          defaultHm
-        ];
-      };
-     });
-  };
+      });
 }
