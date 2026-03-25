@@ -33,6 +33,9 @@
   services.lvm.boot.thin.enable = true;
 
   boot.extraModulePackages = [ config.boot.kernelPackages.evdi ];
+  boot.extraModprobeConfig = ''
+    options evdi initial_device_count=1
+  '';
   boot.kernelModules = [
     "evdi"
   ];
@@ -51,6 +54,11 @@
       });
     })
   ];
+
+  services.udev.extraRules = ''
+    ACTION=="add|change", SUBSYSTEM=="drm", KERNEL=="card*", KERNELS=="0000:00:02.0", SUBSYSTEMS=="pci", SYMLINK+="dri/intel-igpu"
+    ACTION=="add|change", SUBSYSTEM=="drm", KERNEL=="card*", DRIVERS=="evdi", SYMLINK+="dri/displaylink-card"
+  '';
 
   services.openssh = {
     enable = true; 

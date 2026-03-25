@@ -41,6 +41,7 @@
   xdg.configFile."hypr/hyprlock.conf".source = ./hyprlock.conf;
   xdg.configFile."hypr/monitors.conf".source = ./monitors.conf;
   xdg.configFile."hypr/windowrules.conf".source = ./windowrules.conf;
+  xdg.configFile."uwsm/env-hyprland".source = ./env-hyprland;
   xdg.configFile."dunst/dunstrc".source = ./dunst/dunstrc;
   xdg.configFile."rofi/config.rasi".source = ./rofi/config.rasi;
   xdg.configFile."waybar/config".source = ./waybar/config;
