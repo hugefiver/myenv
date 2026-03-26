@@ -3,11 +3,10 @@
     brightnessctl
     cliphist
     dunst
-    gnome-keyring       # Secret Service (WiFi 密码存储)
-    libsecret           # secret-tool CLI，调试用
     grim
     hyprlock
     hyprpolkitagent
+    kdePackages.kwallet  # Hyprland 会话也用 kwallet 做 Secret Service
     libnotify
     networkmanagerapplet
     pavucontrol

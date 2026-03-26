@@ -12,6 +12,10 @@ run_once() {
 
 dbus-update-activation-environment --systemd --all >/dev/null 2>&1 || true
 
+# kwalletd6：Hyprland 下提供 Secret Service D-Bus API（KDE 会话自带，这里显式启动）。
+# kwallet-pam 已在登录时解锁，nm-applet 等应用直接用它存取 WiFi 密码。
+run_once 'kwalletd[56]' kwalletd6
+
 run_once '^waybar$' waybar
 run_once '^dunst$' dunst
 run_once '^hyprpolkitagent$' hyprpolkitagent
