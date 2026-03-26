@@ -6,6 +6,9 @@ in {
   systemd.services.NetworkManager-wait-online.enable = false;
   systemd.services.NetworkManager-wait-online-initrd.enable = false;
 
+  # systemd-networkd-wait-online 也一并禁掉，防止 wlo1 拖慢 network-online.target。
+  systemd.network.wait-online.enable = false;
+
   networking.networkmanager = {
     enable = true;
     wifi.backend = lib.mkDefault "iwd";
@@ -32,6 +35,9 @@ in {
       };
     };
   };
+
+  # iwd 启动不应阻塞引导流程；设置超时防止 WiFi 固件加载过慢拖住整个 boot。
+  systemd.services.iwd.serviceConfig.TimeoutStartSec = lib.mkDefault "8s";
 
   security.polkit.enable = true;
 

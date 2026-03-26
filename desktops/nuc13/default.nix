@@ -43,6 +43,26 @@
     "dm-cache"
     "dm-cache-smq"
   ];
+
+  # ── SDDM: 仅在 Intel iGPU 渲染登录界面 ────────────────────────────
+  # 覆写 SDDM 的 Wayland compositor 命令，通过 KWIN_DRM_DEVICES 环境
+  # 变量限制 kwin_wayland 仅使用 Intel iGPU；这样 DisplayLink 输出
+  # 不会参与 SDDM 渲染，解决登录界面卡顿和多显示器重复显示的问题。
+  # 用户会话的 KWIN_DRM_DEVICES 在 kde.nix 的 sessionVariables 中单独设置，
+  # 包含两块 GPU，因此登录后 KDE/kwin 能正常驱动所有显示器。
+  services.displayManager.sddm.settings.Wayland.CompositorCommand = let
+    kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
+  in toString (pkgs.writeShellScript "sddm-compositor" ''
+    export KWIN_DRM_DEVICES=/dev/dri/intel-igpu
+    export KWIN_DRM_NO_DIRECT_SCANOUT=1
+    exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
+  '');
+
+  # 确保 DisplayLink 管理器在 SDDM 之前就绪，这样用户登录时
+  # evdi DRM 设备已经存在，Hyprland/KDE 可以正确识别所有显示器。
+  systemd.services.display-manager.after = [ "dlm.service" ];
+  systemd.services.display-manager.wants = [ "dlm.service" ];
+
   nixpkgs.overlays = [
     (final: prev: {
       displaylink = prev.displaylink.overrideAttrs (oldAttrs: {

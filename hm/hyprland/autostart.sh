@@ -38,3 +38,7 @@ done
 if ! pgrep -af 'wl-paste --type text --watch cliphist store' >/dev/null 2>&1; then
   wl-paste --type text --watch cliphist store >/dev/null 2>&1 &
 fi
+
+# DisplayLink 安全网：若 evdi 设备在 Hyprland 启动后才就绪，
+# 延迟重载配置以触发 monitor 规则重新评估。
+(sleep 1 && hyprctl reload) >/dev/null 2>&1 &
