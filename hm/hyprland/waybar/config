@@ -88,14 +88,14 @@
 
   "network": {
     "interval": 3,
-    "format-wifi": " {essid}",
+    "format-wifi": " {essid} ({signalStrength}%)",
     "format-ethernet": "󰈀 {ipaddr}",
     "format-linked": "󰈀 {ifname}",
     "format-disconnected": "󰖪 offline",
-    "tooltip-format-wifi": "{essid}\n{signalStrength}%",
+    "tooltip-format-wifi": "{essid}\n信号: {signalStrength}%\nIP: {ipaddr}/{cidr}\n频率: {frequency}MHz",
     "tooltip-format-ethernet": "{ifname}\n{ipaddr}/{cidr}",
-    "on-click": "nm-connection-editor",
-    "on-click-right": "wezterm start --always-new-process -- nmtui"
+    "on-click": "wezterm start --always-new-process -- nmtui",
+    "on-click-right": "nm-connection-editor"
   },
 
   "battery": {
