@@ -21,16 +21,15 @@
     ];
   };
 
-  # Wayland 原生应用（KDE/GTK4/Qt6）通过 Wayland text-input-v3 协议
-  # 直接与 fcitx5 Wayland frontend 通信，无需环境变量。
-  # 以下变量为 XWayland 应用提供输入法支持：
-  #   XMODIFIERS  → XIM 协议（所有 X11 应用的基础回退）
-  #   GTK_IM_MODULE → GTK IM module（XWayland GTK 应用）
-  #   QT_IM_MODULE  → Qt IM module（XWayland Qt 应用 + Hyprland 下的 Qt 应用）
-  # fcitx5-gtk / fcitx5-qt 模块在 Wayland 会话中会自动使用 Wayland 协议，
+  # 环境变量策略（参考 https://fcitx-im.org/wiki/Using_Fcitx_5_on_Wayland）
+  #
+  # XMODIFIERS：全局设置，XWayland 应用通过 XIM 协议连接 fcitx5。
+  #
+  # GTK_IM_MODULE / QT_IM_MODULE：不在此全局设置！
+  #   KDE Plasma：原生支持 text-input-v2/v3，全局设置会导致候选窗闪烁。
+  #   Hyprland：在 hyprland/config.txt 的 env 中单独设置
+  #            （Qt 无 text-input-v2 支持，必须用 fcitx IM module）。
   home.sessionVariables = {
     XMODIFIERS = "@im=fcitx";
-    GTK_IM_MODULE = "fcitx";
-    QT_IM_MODULE = "fcitx";
   };
 }

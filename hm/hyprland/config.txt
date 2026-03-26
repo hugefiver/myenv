@@ -13,6 +13,13 @@ env = NIXOS_OZONE_WL,1
 env = XDG_CURRENT_DESKTOP,Hyprland
 env = XDG_SESSION_TYPE,wayland
 
+# Hyprland 不支持 Qt text-input-v2（仅 KWin 支持），
+# 必须通过 fcitx IM module 为 Qt/GTK 应用提供输入法。
+env = QT_IM_MODULE,fcitx
+env = QT_IM_MODULES,wayland;fcitx
+env = GTK_IM_MODULE,fcitx
+env = SDL_IM_MODULE,fcitx
+
 input {
 	kb_layout = us
 	kb_options = ctrl:swapcaps
