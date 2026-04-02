@@ -52,44 +52,98 @@
     "dm-cache-smq"
   ];
 
-  # ── SDDM: DisplayLink 兼容 + 单屏登录 ─────────────────────────
-  # 不设 KWIN_DRM_DEVICES → kwin 自动发现所有 DRM 设备（含 DisplayLink）。
-  # 仅关闭 direct scanout 防止 evdi 帧时序异常导致卡顿。
-  # 启动后 best-effort 禁用竖屏输出，让 SDDM 只在横屏上显示。
+  # ── SDDM: 即时启动 + DisplayLink 热插拔 + 单横屏登录 ────────────
+  # kwin 立即启动（不等待 evdi），自动发现当前可用 GPU。
+  # DisplayLink 设备后续出现时 kwin 通过 DRM uevent 自动检测。
+  # 后台守护监控输出变化：只保留一个横屏，禁用竖屏。
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
 
-    # best-effort: 等 kwin 就绪后禁用竖屏输出
+    # 后台守护：监控输出变化，确保 SDDM 只在一个横屏上显示
     (
+      # 等待 kwin Wayland socket 就绪
       for _i in $(seq 1 50); do
         for _s in "$XDG_RUNTIME_DIR"/wayland-*; do
           [ -S "$_s" ] && export WAYLAND_DISPLAY=$(basename "$_s") && break 2
         done
         sleep 0.1
       done
-      sleep 0.5
 
-      # kscreen-doctor Geometry 行末尾格式 WxH，高>宽即竖屏
-      for _out in $(kscreen-doctor -o 2>/dev/null | awk '
-        /^Output:/ { name=$3 }
-        /Geometry:/ {
-          n = split($NF, d, "x")
-          if (n == 2 && int(d[2]) > int(d[1]) && name != "") print name
-          name=""
-        }
-      '); do
-        kscreen-doctor "output.$_out.disable" 2>/dev/null || true
+      enforce_single_landscape() {
+        # 获取所有已连接输出及其分辨率
+        local outputs
+        outputs=$(kscreen-doctor -o 2>/dev/null) || return
+
+        local landscape="" portrait=""
+        local cur_name="" cur_w=0 cur_h=0
+
+        while IFS= read -r line; do
+          case "$line" in
+            Output:*)
+              # 处理上一个输出
+              if [ -n "$cur_name" ] && [ "$cur_w" -gt 0 ]; then
+                if [ "$cur_h" -gt "$cur_w" ]; then
+                  portrait="$portrait $cur_name"
+                else
+                  landscape="$landscape $cur_name"
+                fi
+              fi
+              cur_name=$(echo "$line" | awk '{print $3}')
+              cur_w=0; cur_h=0
+              ;;
+            *Geometry:*)
+              local wh=$(echo "$line" | awk '{print $NF}')
+              cur_w=$(echo "$wh" | cut -dx -f1)
+              cur_h=$(echo "$wh" | cut -dx -f2)
+              ;;
+          esac
+        done <<< "$outputs"
+        # 处理最后一个
+        if [ -n "$cur_name" ] && [ "$cur_w" -gt 0 ]; then
+          if [ "$cur_h" -gt "$cur_w" ]; then
+            portrait="$portrait $cur_name"
+          else
+            landscape="$landscape $cur_name"
+          fi
+        fi
+
+        # 禁用所有竖屏
+        for _out in $portrait; do
+          kscreen-doctor "output.$_out.disable" 2>/dev/null || true
+        done
+
+        # 如果有多个横屏，只保留第一个
+        local first=true
+        for _out in $landscape; do
+          if $first; then
+            first=false
+          else
+            kscreen-doctor "output.$_out.disable" 2>/dev/null || true
+          fi
+        done
+      }
+
+      # 初始执行 + 每 2 秒轮询（捕获 DisplayLink 热插拔后的输出变化）
+      sleep 0.5
+      prev_hash=""
+      while true; do
+        cur_hash=$(kscreen-doctor -o 2>/dev/null | grep -c "Output:" || echo 0)
+        if [ "$cur_hash" != "$prev_hash" ]; then
+          sleep 0.3  # 等输出稳定
+          enforce_single_landscape
+          prev_hash="$cur_hash"
+        fi
+        sleep 2
       done
     ) >/dev/null 2>&1 &
 
     exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
   '');
 
-  # 确保 DisplayLink 管理器在 SDDM 之前就绪，这样用户登录时
-  # evdi DRM 设备已经存在，Hyprland/KDE 可以正确识别所有显示器。
-  systemd.services.display-manager.after = [ "dlm.service" ];
+  # dlm.service 不再阻塞 SDDM 启动，改为 Wants（并行启动）
+  systemd.services.display-manager.after = lib.mkForce [];
   systemd.services.display-manager.wants = [ "dlm.service" ];
 
   nixpkgs.overlays = [
