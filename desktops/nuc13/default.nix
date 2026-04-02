@@ -52,13 +52,38 @@
     "dm-cache-smq"
   ];
 
-  # ── SDDM: DisplayLink 兼容 ──────────────────────────────────────
-  # 不设 KWIN_DRM_DEVICES → kwin 自动发现所有 DRM 设备（含热插拔）。
+  # ── SDDM: DisplayLink 兼容 + 单屏登录 ─────────────────────────
+  # 不设 KWIN_DRM_DEVICES → kwin 自动发现所有 DRM 设备（含 DisplayLink）。
   # 仅关闭 direct scanout 防止 evdi 帧时序异常导致卡顿。
+  # 启动后 best-effort 禁用竖屏输出，让 SDDM 只在横屏上显示。
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
+
+    # best-effort: 等 kwin 就绪后禁用竖屏输出
+    (
+      for _i in $(seq 1 50); do
+        for _s in "$XDG_RUNTIME_DIR"/wayland-*; do
+          [ -S "$_s" ] && export WAYLAND_DISPLAY=$(basename "$_s") && break 2
+        done
+        sleep 0.1
+      done
+      sleep 0.5
+
+      # kscreen-doctor Geometry 行末尾格式 WxH，高>宽即竖屏
+      for _out in $(kscreen-doctor -o 2>/dev/null | awk '
+        /^Output:/ { name=$3 }
+        /Geometry:/ {
+          n = split($NF, d, "x")
+          if (n == 2 && int(d[2]) > int(d[1]) && name != "") print name
+          name=""
+        }
+      '); do
+        kscreen-doctor "output.$_out.disable" 2>/dev/null || true
+      done
+    ) >/dev/null 2>&1 &
+
     exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
   '');
 
@@ -83,6 +108,15 @@
     ACTION=="add|change", SUBSYSTEM=="drm", KERNEL=="card*", KERNELS=="0000:00:02.0", SUBSYSTEMS=="pci", SYMLINK+="dri/intel-igpu"
     ACTION=="add|change", SUBSYSTEM=="drm", KERNEL=="card*", DRIVERS=="evdi", SYMLINK+="dri/displaylink-card"
   '';
+
+  # ── 多 GPU 会话变量（Hyprland / aquamarine）─────────────────────
+  # env-hyprland 通过 UWSM source 也会设置这些，这里作为 fallback
+  # 确保即使 UWSM 未正确读取 env 文件也能让 Hyprland 找到双 GPU。
+  environment.sessionVariables = {
+    AQ_DRM_DEVICES = "/dev/dri/intel-igpu:/dev/dri/displaylink-card";
+    AQ_MGPU_NO_EXPLICIT = "1";       # evdi 不支持 explicit sync
+    WLR_NO_HARDWARE_CURSORS = "1";   # DisplayLink USB 链路下避免光标异常
+  };
 
   services.openssh = {
     enable = true; 

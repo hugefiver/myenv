@@ -107,8 +107,7 @@
     "format-disconnected": "󰖪",
     "tooltip-format-wifi": "{essid}\n信号: {signalStrength}%\nIP: {ipaddr}/{cidr}\n频率: {frequency}MHz",
     "tooltip-format-ethernet": "{ifname}\n{ipaddr}/{cidr}",
-    "on-click": "wezterm start --always-new-process -- nmtui",
-    "on-click-right": "nm-connection-editor"
+    "on-click": "nm-connection-editor"
   },
 
   "battery": {
