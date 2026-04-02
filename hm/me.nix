@@ -53,6 +53,9 @@
     shellAliases = {
       hm = "home-manager";
     };
+    initExtra = ''
+      compdef hm=home-manager
+    '';
     oh-my-zsh = {
       enable = true;
       package = unstable.oh-my-zsh;
