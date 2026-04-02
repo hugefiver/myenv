@@ -4,11 +4,11 @@
     cliphist
     dunst
     grim
+    hypridle
     hyprlock
     hyprpolkitagent
     kdePackages.kwallet  # Hyprland 会话也用 kwallet 做 Secret Service
     libnotify
-    networkmanagerapplet
     pavucontrol
     playerctl
     rofi
@@ -39,6 +39,7 @@
   };
   xdg.configFile."hypr/base.conf".source = ./config.txt;
   xdg.configFile."hypr/keybinds.conf".source = ./keybinds.conf;
+  xdg.configFile."hypr/hypridle.conf".source = ./hypridle.conf;
   xdg.configFile."hypr/hyprlock.conf".source = ./hyprlock.conf;
   xdg.configFile."hypr/monitors.conf".source = ./monitors.conf;
   xdg.configFile."hypr/windowrules.conf".source = ./windowrules.conf;

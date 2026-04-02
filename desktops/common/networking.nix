@@ -36,8 +36,15 @@ in {
     };
   };
 
-  # iwd 启动不应阻塞引导流程；设置超时防止 WiFi 固件加载过慢拖住整个 boot。
-  systemd.services.iwd.serviceConfig.TimeoutStartSec = lib.mkDefault "8s";
+  # iwd 启动不应无限阻塞引导，但也不能太激进（WiFi 固件加载可能需要时间）。
+  # 默认 systemd timeout 是 90s，30s 足够大多数固件加载。
+  systemd.services.iwd.serviceConfig.TimeoutStartSec = lib.mkDefault "30s";
+
+  # ── iwd ↔ NetworkManager 启动顺序 ──────────────────────────
+  # 默认 iwd 是 D-Bus activated（按需启动），但 NM 不一定会等 iwd 就绪。
+  # 显式将 iwd 加入 multi-user.target 并让 NM 依赖它，消除竞态。
+  systemd.services.iwd.wantedBy = [ "multi-user.target" ];
+  systemd.services.NetworkManager.after = [ "iwd.service" ];
 
   security.polkit.enable = true;
 

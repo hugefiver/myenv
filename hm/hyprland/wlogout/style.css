@@ -1,31 +1,36 @@
 * {
   background-image: none;
   box-shadow: none;
-  font-family: "CaskaydiaCove Nerd Font Mono", "Noto Sans CJK SC", "Noto Color Emoji";
-  transition: 180ms ease;
+  font-family: "Noto Sans", "Noto Sans CJK SC", "CaskaydiaCove Nerd Font Mono";
+  font-size: 14px;
+  transition: 200ms cubic-bezier(0.05, 0.7, 0.1, 1);
 }
 
 window {
-  background: rgba(17, 17, 27, 0.74);
+  background: rgba(17, 17, 27, 0.82);
 }
 
 button {
-  margin: 22px;
-  min-width: 132px;
-  min-height: 132px;
-  border-radius: 30px;
-  border: 1px solid rgba(137, 180, 250, 0.22);
-  background: linear-gradient(180deg, rgba(49, 50, 68, 0.96), rgba(30, 30, 46, 0.92));
-  color: #dce3ff;
-  font-size: 30px;
+  margin: 18px;
+  min-width: 140px;
+  min-height: 140px;
+  border-radius: 28px;
+  border: 1px solid rgba(137, 180, 250, 0.15);
+  background: rgba(30, 30, 46, 0.85);
+  color: rgba(205, 214, 244, 0.9);
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 button:focus,
 button:active,
 button:hover {
-  background: linear-gradient(135deg, rgba(125, 196, 228, 0.92), rgba(180, 190, 254, 0.92), rgba(203, 166, 247, 0.92));
+  background: linear-gradient(135deg, rgba(125, 196, 228, 0.88), rgba(137, 180, 250, 0.88));
   color: #11111b;
-  border-color: rgba(205, 214, 244, 0.6);
+  border-color: rgba(205, 214, 244, 0.5);
+  font-weight: 600;
 }
 
 #lock,
@@ -35,5 +40,5 @@ button:hover {
 #shutdown {
   background-repeat: no-repeat;
   background-position: center 30px;
-  background-size: 34px;
+  background-size: 36px;
 }

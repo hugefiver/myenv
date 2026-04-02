@@ -16,10 +16,10 @@ dbus-update-activation-environment --systemd --all >/dev/null 2>&1 || true
 # kwallet-pam 已在登录时解锁，nm-applet 等应用直接用它存取 WiFi 密码。
 run_once 'kwalletd[56]' kwalletd6
 
+run_once '^hypridle$' hypridle
 run_once '^waybar$' waybar
 run_once '^dunst$' dunst
 run_once '^hyprpolkitagent$' hyprpolkitagent
-run_once '^nm-applet$' nm-applet --indicator
 
 if ! pgrep -x swww-daemon >/dev/null 2>&1; then
   swww-daemon >/dev/null 2>&1 &

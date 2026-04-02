@@ -10,6 +10,7 @@
     ./hidpi.nix
     ./ime.nix
     ./xdg.nix
+    ./gtk.nix
   ];
   
   home.enableNixpkgsReleaseCheck = false;

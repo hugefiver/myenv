@@ -50,37 +50,49 @@ decoration {
 	active_opacity = 0.96
 	inactive_opacity = 0.91
 	fullscreen_opacity = 1.0
-	dim_inactive = false
+	dim_inactive = true
+	dim_strength = 0.08
 
 	shadow {
 		enabled = true
-		range = 28
+		range = 30
 		render_power = 3
-		color = rgba(0000004f)
+		color = rgba(00000055)
+		color_inactive = rgba(00000030)
 	}
 
 	blur {
 		enabled = true
-		size = 10
-		passes = 3
+		size = 6
+		passes = 4
 		new_optimizations = true
-		xray = false
-		noise = 0.02
+		xray = true
+		noise = 0.015
+		contrast = 0.9
+		brightness = 0.85
+		vibrancy = 0.15
 	}
 }
 
 animations {
 	enabled = yes
-	bezier = smoothOut, 0.22, 1, 0.36, 1
-	bezier = smoothIn, 0.12, 0, 0.39, 0
-	bezier = overshot, 0.16, 1, 0.3, 1.16
-	bezier = almostLinear, 0.4, 0.8, 0.2, 1.0
 
-	animation = windows, 1, 6, overshot, popin 87%
-	animation = windowsOut, 1, 5, smoothIn, popin 87%
+	# Material Design 3 风格贝塞尔曲线
+	bezier = md3_decel, 0.05, 0.7, 0.1, 1
+	bezier = md3_accel, 0.3, 0, 0.8, 0.15
+	bezier = overshot, 0.05, 0.9, 0.1, 1.05
+	bezier = smoothOut, 0.36, 0, 0.66, -0.56
+	bezier = smoothIn, 0.25, 1, 0.5, 1
+
+	animation = windows, 1, 5, md3_decel, popin 60%
+	animation = windowsIn, 1, 5, md3_decel, popin 60%
+	animation = windowsOut, 1, 4, md3_accel, popin 60%
+	animation = windowsMove, 1, 4, md3_decel
 	animation = border, 1, 10, default
-	animation = fade, 1, 6, smoothOut
-	animation = workspaces, 1, 6, almostLinear, slide
+	animation = borderangle, 1, 120, smoothIn, loop
+	animation = fade, 1, 4, md3_decel
+	animation = workspaces, 1, 5, md3_decel, slide
+	animation = specialWorkspace, 1, 4, md3_decel, slidefadevert -20%
 }
 
 dwindle {
@@ -103,6 +115,15 @@ misc {
 
 bindm = $mod, mouse:272, movewindow
 bindm = $mod, mouse:273, resizewindow
+
+# ── Layer Rules ──────────────────────────────────────────────
+# waybar / rofi / wlogout 等 layer shell 表面的毛玻璃效果
+layerrule = blur, waybar
+layerrule = ignorealpha 0.3, waybar
+layerrule = blur, rofi
+layerrule = ignorealpha 0.3, rofi
+layerrule = blur, logout_dialog
+layerrule = ignorealpha 0.3, logout_dialog
 
 bindel = , XF86MonBrightnessUp, exec, brightnessctl s 10%+
 bindel = , XF86MonBrightnessDown, exec, brightnessctl s 10%-
