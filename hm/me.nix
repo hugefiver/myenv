@@ -53,7 +53,7 @@
     shellAliases = {
       hm = "home-manager";
     };
-    initExtra = ''
+    initContent = ''
       compdef hm=home-manager
     '';
     oh-my-zsh = {
