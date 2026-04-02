@@ -14,20 +14,29 @@
   ];
   
   home.enableNixpkgsReleaseCheck = false;
-  home.backupFileExtension = "hm-bak";   # switch 遇到已有文件自动备份为 .hm-bak
 
-  # switch 前处理旧备份：与当前文件相同则删除，不同则保留为 .bak.{N}
-  home.activation.removeExistingBackups = lib.hm.dag.entryBefore ["checkLinkTargets"] ''
-    find "${config.home.homeDirectory}/.config" -name "*.hm-bak" -type f 2>/dev/null | while IFS= read -r bak; do
-      orig="''${bak%.hm-bak}"
-      if [ -e "$orig" ] && diff -q "$bak" "$orig" >/dev/null 2>&1; then
-        rm -f "$bak"
-      else
-        n=1
-        while [ -e "''${orig}.bak.''${n}" ]; do n=$((n + 1)); done
-        mv "$bak" "''${orig}.bak.''${n}"
-      fi
-    done
+  # switch 前：HM 管理的路径若已有非符号链接文件，对比后备份/删除，避免冲突
+  home.activation.resolveFileConflicts = lib.hm.dag.entryBefore ["checkLinkTargets"] ''
+    hm_gendir="''${XDG_STATE_HOME:-$HOME/.local/state}/nix/profiles/home-manager"
+    new_gen=$(readlink -f "$hm_gendir") 2>/dev/null || true
+
+    if [ -d "$new_gen/home-files" ]; then
+      find "$new_gen/home-files" -type f -o -type l | while IFS= read -r store_file; do
+        rel="''${store_file#$new_gen/home-files/}"
+        target="$HOME/$rel"
+
+        # 只处理普通文件冲突（符号链接是 HM 自己管理的，不冲突）
+        [ -e "$target" ] && [ ! -L "$target" ] || continue
+
+        if diff -q "$target" "$store_file" >/dev/null 2>&1; then
+          rm -f "$target"
+        else
+          n=1
+          while [ -e "''${target}.bak.''${n}" ]; do n=$((n + 1)); done
+          mv "$target" "''${target}.bak.''${n}"
+        fi
+      done
+    fi
   '';
   
   home.username = "hugefiver";
