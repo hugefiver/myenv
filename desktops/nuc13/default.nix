@@ -23,6 +23,10 @@
   };
 
   networking.hostName = "desktop-nuc13";
+  # NetworkManager 全权管理网络，禁止 NixOS scripted backend 为每个接口
+  # 生成 DHCP 服务（会创建 BindsTo=sys-subsystem-net-devices-wlo1.device，
+  # WiFi 设备未就绪时卡 90s DefaultDeviceTimeoutSec）。
+  networking.useDHCP = false;
   hardware.facter.reportPath = ./facter.json;
   hardware.enableRedistributableFirmware = true;
 
