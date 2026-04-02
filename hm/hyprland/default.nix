@@ -44,6 +44,10 @@
     source = ./scripts/record-toggle.sh;
     executable = true;
   };
+  xdg.configFile."hypr/scripts/auto-scale.sh" = {
+    source = ./scripts/auto-scale.sh;
+    executable = true;
+  };
   xdg.configFile."hypr/base.conf".source = ./config.txt;
   xdg.configFile."hypr/keybinds.conf".source = ./keybinds.conf;
   xdg.configFile."hypr/hypridle.conf".source = ./hypridle.conf;
