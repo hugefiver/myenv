@@ -3,7 +3,7 @@
   border-radius: 0;
   min-height: 0;
   font-family: "Noto Sans", "Noto Sans CJK SC", "CaskaydiaCove Nerd Font Mono", "Noto Color Emoji";
-  font-size: 14px;
+  font-size: 15px;
 }
 
 window#waybar {
@@ -60,6 +60,7 @@ tooltip {
   color: #ffffff;
   background: rgba(96, 165, 250, 0.24);
   border: 1px solid rgba(96, 165, 250, 0.3);
+  font-size: 18px;
 }
 
 #window {

@@ -44,8 +44,8 @@
 
   "clock": {
     "locale": "zh_CN.UTF-8",
-    "format": "󰥔 {:%a %m-%d  %H:%M}",
-    "format-alt": "󰃭 {:%Y-%m-%d}",
+    "format": "󰥔 {:%m月%d日 %a %H:%M}",
+    "format-alt": "󰃭 {:%Y年%m月%d日 %A}",
     "tooltip-format": "<big>{:%Y年%m月%d日 %A}</big>\n<tt>{calendar}</tt>",
     "calendar": {
       "mode": "month",

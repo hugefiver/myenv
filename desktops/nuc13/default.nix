@@ -52,19 +52,25 @@
     "dm-cache-smq"
   ];
 
-  # ── SDDM: 即时启动 + DisplayLink 热插拔 + 单横屏登录 ────────────
-  # kwin 立即启动（不等待 evdi），自动发现当前可用 GPU。
-  # DisplayLink 设备后续出现时 kwin 通过 DRM uevent 自动检测。
+  # ── SDDM: kwin 自动发现 GPU + 单横屏登录 ─────────────────────
+  # kwin 立即启动，自动发现所有 DRM 设备（含 DisplayLink/evdi）。
   # 后台守护监控输出变化：只保留一个横屏，禁用竖屏。
+  # 守护进程在 kwin 退出（用户登录）后自动终止。
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
+    kscreenDoctor = lib.getExe' pkgs.kdePackages.libkscreen "kscreen-doctor";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
 
-    # 后台守护：监控输出变化，确保 SDDM 只在一个横屏上显示
+    # 启动 kwin（后台），记录 PID 以便守护进程检测退出
+    ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard &
+    KWIN_PID=$!
+
+    # 后台守护：只保留一个横屏
     (
       # 等待 kwin Wayland socket 就绪
       for _i in $(seq 1 50); do
+        kill -0 $KWIN_PID 2>/dev/null || exit 0
         for _s in "$XDG_RUNTIME_DIR"/wayland-*; do
           [ -S "$_s" ] && export WAYLAND_DISPLAY=$(basename "$_s") && break 2
         done
@@ -72,9 +78,8 @@
       done
 
       enforce_single_landscape() {
-        # 获取所有已连接输出及其分辨率
         local outputs
-        outputs=$(kscreen-doctor -o 2>/dev/null) || return
+        outputs=$(${kscreenDoctor} -o 2>/dev/null) || return
 
         local landscape="" portrait=""
         local cur_name="" cur_w=0 cur_h=0
@@ -82,7 +87,6 @@
         while IFS= read -r line; do
           case "$line" in
             Output:*)
-              # 处理上一个输出
               if [ -n "$cur_name" ] && [ "$cur_w" -gt 0 ]; then
                 if [ "$cur_h" -gt "$cur_w" ]; then
                   portrait="$portrait $cur_name"
@@ -100,7 +104,6 @@
               ;;
           esac
         done <<< "$outputs"
-        # 处理最后一个
         if [ -n "$cur_name" ] && [ "$cur_w" -gt 0 ]; then
           if [ "$cur_h" -gt "$cur_w" ]; then
             portrait="$portrait $cur_name"
@@ -109,29 +112,23 @@
           fi
         fi
 
-        # 禁用所有竖屏
         for _out in $portrait; do
-          kscreen-doctor "output.$_out.disable" 2>/dev/null || true
+          ${kscreenDoctor} "output.$_out.disable" 2>/dev/null || true
         done
-
-        # 如果有多个横屏，只保留第一个
         local first=true
         for _out in $landscape; do
-          if $first; then
-            first=false
-          else
-            kscreen-doctor "output.$_out.disable" 2>/dev/null || true
+          if $first; then first=false; else
+            ${kscreenDoctor} "output.$_out.disable" 2>/dev/null || true
           fi
         done
       }
 
-      # 初始执行 + 每 2 秒轮询（捕获 DisplayLink 热插拔后的输出变化）
       sleep 0.5
       prev_hash=""
-      while true; do
-        cur_hash=$(kscreen-doctor -o 2>/dev/null | grep -c "Output:" || echo 0)
+      while kill -0 $KWIN_PID 2>/dev/null; do
+        cur_hash=$(${kscreenDoctor} -o 2>/dev/null | grep -c "Output:" || echo 0)
         if [ "$cur_hash" != "$prev_hash" ]; then
-          sleep 0.3  # 等输出稳定
+          sleep 0.3
           enforce_single_landscape
           prev_hash="$cur_hash"
         fi
@@ -139,12 +136,8 @@
       done
     ) >/dev/null 2>&1 &
 
-    exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
+    wait $KWIN_PID
   '');
-
-  # dlm.service 不再阻塞 SDDM 启动，改为 Wants（并行启动）
-  systemd.services.display-manager.after = lib.mkForce [];
-  systemd.services.display-manager.wants = [ "dlm.service" ];
 
   nixpkgs.overlays = [
     (final: prev: {
