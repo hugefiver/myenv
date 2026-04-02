@@ -52,12 +52,40 @@
     "dm-cache-smq"
   ];
 
-  # ── SDDM: kwin 自动发现 GPU ──────────────────────────────────
+  # ── SDDM: kwin 自动发现 GPU + 禁用竖屏 ─────────────────────
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
+    kscreenDoctor = lib.getExe' pkgs.kdePackages.libkscreen "kscreen-doctor";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
-    exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
+
+    ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard &
+    KWIN_PID=$!
+
+    # 一次性禁用竖屏（等 kwin 就绪后执行，不做轮询）
+    (
+      sleep 3
+      for _s in "$XDG_RUNTIME_DIR"/wayland-*; do
+        [ -S "$_s" ] && export WAYLAND_DISPLAY="$(basename "$_s")" && break
+      done
+      [ -z "''${WAYLAND_DISPLAY:-}" ] && exit 0
+
+      ${kscreenDoctor} -o 2>/dev/null | awk '
+        /^Output:/ { name=$3 }
+        /Geometry:/ {
+          split($NF, a, "x")
+          if (a[2]+0 > a[1]+0) portrait[np++] = name
+          else landscape++
+        }
+        END {
+          if (landscape > 0) for (i in portrait) print portrait[i]
+        }
+      ' | while read -r out; do
+        ${kscreenDoctor} "output.$out.disable" 2>/dev/null || true
+      done
+    ) &
+
+    wait $KWIN_PID
   '');
 
   nixpkgs.overlays = [
