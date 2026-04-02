@@ -46,3 +46,5 @@ fi
 # DisplayLink 安全网：若 evdi 设备在 Hyprland 启动后才就绪，
 # 延迟重载配置以触发 monitor 规则重新评估，之后再自动缩放。
 (sleep 1 && hyprctl reload && sleep 0.5 && ~/.config/hypr/scripts/auto-scale.sh) >/dev/null 2>&1 &
+
+run_once 'waybar-autohide' ~/.config/hypr/scripts/waybar-autohide.sh

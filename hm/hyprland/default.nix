@@ -15,6 +15,7 @@
     playerctl
     rofi
     slurp
+    socat
     swappy             # 截图标注编辑器
     swww
     waybar
@@ -51,6 +52,14 @@
   };
   xdg.configFile."hypr/scripts/keybind-cheatsheet.sh" = {
     source = ./scripts/keybind-cheatsheet.sh;
+    executable = true;
+  };
+  xdg.configFile."hypr/scripts/waybar-autohide.sh" = {
+    source = ./scripts/waybar-autohide.sh;
+    executable = true;
+  };
+  xdg.configFile."hypr/scripts/rofi-launcher.sh" = {
+    source = ./scripts/rofi-launcher.sh;
     executable = true;
   };
   xdg.configFile."hypr/base.conf".source = ./config.txt;

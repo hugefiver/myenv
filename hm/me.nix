@@ -1,4 +1,4 @@
-{self, pkgs, unstable, config, ...} : {
+{self, pkgs, lib, unstable, config, ...} : {
 
   imports = [
     ./hyprland
@@ -14,6 +14,21 @@
   ];
   
   home.enableNixpkgsReleaseCheck = false;
+  home.backupFileExtension = "hm-bak";   # switch 遇到已有文件自动备份为 .hm-bak
+
+  # switch 前处理旧备份：与当前文件相同则删除，不同则保留为 .bak.{N}
+  home.activation.removeExistingBackups = lib.hm.dag.entryBefore ["checkLinkTargets"] ''
+    find "${config.home.homeDirectory}/.config" -name "*.hm-bak" -type f 2>/dev/null | while IFS= read -r bak; do
+      orig="''${bak%.hm-bak}"
+      if [ -e "$orig" ] && diff -q "$bak" "$orig" >/dev/null 2>&1; then
+        rm -f "$bak"
+      else
+        n=1
+        while [ -e "''${orig}.bak.''${n}" ]; do n=$((n + 1)); done
+        mv "$bak" "''${orig}.bak.''${n}"
+      fi
+    done
+  '';
   
   home.username = "hugefiver";
   home.homeDirectory = "/home/hugefiver";

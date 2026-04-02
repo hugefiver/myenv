@@ -43,6 +43,7 @@
   },
 
   "clock": {
+    "locale": "zh_CN.UTF-8",
     "format": "󰥔 {:%a %m-%d  %H:%M}",
     "format-alt": "󰃭 {:%Y-%m-%d}",
     "tooltip-format": "<big>{:%Y年%m月%d日 %A}</big>\n<tt>{calendar}</tt>",
