@@ -23,11 +23,13 @@ is_popup() {
 
 SOCKET="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 tracked_addr=""
+grace_until=0
 
 restore_follow_mouse() {
   if [ -n "$tracked_addr" ]; then
-    hyprctl keyword input:follow_mouse 1 2>/dev/null || true
+    hyprctl --batch "keyword input:follow_mouse 1; keyword input:mouse_refocus true" 2>/dev/null || true
     tracked_addr=""
+    grace_until=0
   fi
 }
 
@@ -41,7 +43,8 @@ socat -u "UNIX-CONNECT:$SOCKET" - | while IFS= read -r event; do
 
       if is_popup "$ow_class"; then
         tracked_addr="$ow_addr"
-        hyprctl keyword input:follow_mouse 0 2>/dev/null || true
+        hyprctl --batch "keyword input:follow_mouse 0; keyword input:mouse_refocus false" 2>/dev/null || true
+        grace_until=$((SECONDS + 2))
       fi
       ;;
 
@@ -49,6 +52,7 @@ socat -u "UNIX-CONNECT:$SOCKET" - | while IFS= read -r event; do
       new_addr="${event#activewindowv2>>}"
 
       if [ -n "$tracked_addr" ] && [ "$new_addr" != "$tracked_addr" ]; then
+        [ "$SECONDS" -lt "$grace_until" ] && continue
         hyprctl dispatch closewindow "address:0x$tracked_addr" 2>/dev/null || true
         restore_follow_mouse
       fi
