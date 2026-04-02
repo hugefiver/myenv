@@ -44,14 +44,12 @@
     "dm-cache-smq"
   ];
 
-  # ── SDDM: 双 GPU 渲染登录界面（含 DisplayLink）────────────────────
-  # 让 SDDM 的 kwin_wayland 同时驱动 Intel iGPU 和 DisplayLink，
-  # 保证无论哪块屏幕都能看到登录界面。
-  # KWIN_DRM_NO_DIRECT_SCANOUT 关闭 direct scanout 以缓解 DisplayLink 卡顿。
+  # ── SDDM: DisplayLink 兼容 ──────────────────────────────────────
+  # 不设 KWIN_DRM_DEVICES → kwin 自动发现所有 DRM 设备（含热插拔）。
+  # 仅关闭 direct scanout 防止 evdi 帧时序异常导致卡顿。
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
-    export KWIN_DRM_DEVICES=/dev/dri/intel-igpu:/dev/dri/displaylink-card
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
     exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
   '');
