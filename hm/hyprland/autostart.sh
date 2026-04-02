@@ -44,7 +44,21 @@ if ! pgrep -af 'wl-paste --type text --watch cliphist store' >/dev/null 2>&1; th
 fi
 
 # DisplayLink 安全网：若 evdi 设备在 Hyprland 启动后才就绪，
-# 延迟重载配置以触发 monitor 规则重新评估，之后再自动缩放。
-(sleep 1 && hyprctl reload && sleep 0.5 && ~/.config/hypr/scripts/auto-scale.sh) >/dev/null 2>&1 &
+# 延迟重载配置以触发 monitor 规则重新评估，之后重刷壁纸 + 自动缩放。
+(
+  sleep 1 && hyprctl reload && sleep 0.5
+  # 重新为所有输出设壁纸（新检测到的显示器没有壁纸）
+  for wallpaper in \
+    "$HOME/Pictures/Wallpapers/default.png" \
+    "$HOME/Pictures/Wallpapers/default.jpg" \
+    "$HOME/Pictures/Wallpapers/default.jpeg"; do
+    if [ -f "$wallpaper" ]; then
+      swww img "$wallpaper" --transition-type none 2>/dev/null || true
+      break
+    fi
+  done
+  ~/.config/hypr/scripts/auto-scale.sh
+) >/dev/null 2>&1 &
 
 run_once 'waybar-autohide' ~/.config/hypr/scripts/waybar-autohide.sh
+run_once 'popup-dismiss' ~/.config/hypr/scripts/popup-dismiss.sh

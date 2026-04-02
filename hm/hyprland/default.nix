@@ -8,6 +8,7 @@
     hypridle
     hyprlock
     hyprpolkitagent
+    jq
     kdePackages.kwallet  # Hyprland 会话也用 kwallet 做 Secret Service
     libnotify
     networkmanagerapplet # nm-connection-editor：图形化编辑 WiFi/VPN 配置
@@ -60,6 +61,10 @@
   };
   xdg.configFile."hypr/scripts/rofi-launcher.sh" = {
     source = ./scripts/rofi-launcher.sh;
+    executable = true;
+  };
+  xdg.configFile."hypr/scripts/popup-dismiss.sh" = {
+    source = ./scripts/popup-dismiss.sh;
     executable = true;
   };
   xdg.configFile."hypr/base.conf".source = ./config.txt;
