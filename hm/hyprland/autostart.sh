@@ -46,7 +46,13 @@ fi
 # DisplayLink 安全网：若 evdi 设备在 Hyprland 启动后才就绪，
 # 延迟重载配置以触发 monitor 规则重新评估，之后重刷壁纸 + 自动缩放。
 (
-  sleep 1 && hyprctl reload && sleep 0.5
+  sleep 1
+  hyprctl dispatch dpms off
+  sleep 0.3
+  hyprctl dispatch dpms on
+  sleep 0.5
+  hyprctl reload
+  sleep 0.5
   # 重新为所有输出设壁纸（新检测到的显示器没有壁纸）
   for wallpaper in \
     "$HOME/Pictures/Wallpapers/default.png" \

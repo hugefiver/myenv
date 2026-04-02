@@ -32,4 +32,35 @@
   home.sessionVariables = {
     XMODIFIERS = "@im=fcitx";
   };
+
+  # ── fcitx5 profile：键盘 + RIME ──────────────────────────────
+  xdg.configFile."fcitx5/profile" = {
+    force = true;
+    text = ''
+      [Groups/0]
+      Name=Default
+      Default Layout=us
+      DefaultIM=rime
+
+      [Groups/0/Items/0]
+      Name=keyboard-us
+      Layout=
+
+      [Groups/0/Items/1]
+      Name=rime
+      Layout=
+
+      [GroupOrder]
+      0=Default
+    '';
+  };
+
+  # ── RIME：确保使用雾凇拼音 schema ──────────────────────────────
+  # rime-ice 的 default.yaml 已在共享数据目录（rimeDataPkgs），
+  # 此 custom 文件覆盖用户目录中可能存在的旧配置。
+  xdg.dataFile."fcitx5/rime/default.custom.yaml".text = ''
+    patch:
+      schema_list:
+        - schema: rime_ice
+  '';
 }

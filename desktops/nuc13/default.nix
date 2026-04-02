@@ -52,91 +52,12 @@
     "dm-cache-smq"
   ];
 
-  # ── SDDM: kwin 自动发现 GPU + 单横屏登录 ─────────────────────
-  # kwin 立即启动，自动发现所有 DRM 设备（含 DisplayLink/evdi）。
-  # 后台守护监控输出变化：只保留一个横屏，禁用竖屏。
-  # 守护进程在 kwin 退出（用户登录）后自动终止。
+  # ── SDDM: kwin 自动发现 GPU ──────────────────────────────────
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
-    kscreenDoctor = lib.getExe' pkgs.kdePackages.libkscreen "kscreen-doctor";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
-
-    # 启动 kwin（后台），记录 PID 以便守护进程检测退出
-    ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard &
-    KWIN_PID=$!
-
-    # 后台守护：只保留一个横屏
-    (
-      # 等待 kwin Wayland socket 就绪
-      for _i in $(seq 1 50); do
-        kill -0 $KWIN_PID 2>/dev/null || exit 0
-        for _s in "$XDG_RUNTIME_DIR"/wayland-*; do
-          [ -S "$_s" ] && export WAYLAND_DISPLAY=$(basename "$_s") && break 2
-        done
-        sleep 0.1
-      done
-
-      enforce_single_landscape() {
-        local outputs
-        outputs=$(${kscreenDoctor} -o 2>/dev/null) || return
-
-        local landscape="" portrait=""
-        local cur_name="" cur_w=0 cur_h=0
-
-        while IFS= read -r line; do
-          case "$line" in
-            Output:*)
-              if [ -n "$cur_name" ] && [ "$cur_w" -gt 0 ]; then
-                if [ "$cur_h" -gt "$cur_w" ]; then
-                  portrait="$portrait $cur_name"
-                else
-                  landscape="$landscape $cur_name"
-                fi
-              fi
-              cur_name=$(echo "$line" | awk '{print $3}')
-              cur_w=0; cur_h=0
-              ;;
-            *Geometry:*)
-              local wh=$(echo "$line" | awk '{print $NF}')
-              cur_w=$(echo "$wh" | cut -dx -f1)
-              cur_h=$(echo "$wh" | cut -dx -f2)
-              ;;
-          esac
-        done <<< "$outputs"
-        if [ -n "$cur_name" ] && [ "$cur_w" -gt 0 ]; then
-          if [ "$cur_h" -gt "$cur_w" ]; then
-            portrait="$portrait $cur_name"
-          else
-            landscape="$landscape $cur_name"
-          fi
-        fi
-
-        for _out in $portrait; do
-          ${kscreenDoctor} "output.$_out.disable" 2>/dev/null || true
-        done
-        local first=true
-        for _out in $landscape; do
-          if $first; then first=false; else
-            ${kscreenDoctor} "output.$_out.disable" 2>/dev/null || true
-          fi
-        done
-      }
-
-      sleep 0.5
-      prev_hash=""
-      while kill -0 $KWIN_PID 2>/dev/null; do
-        cur_hash=$(${kscreenDoctor} -o 2>/dev/null | grep -c "Output:" || echo 0)
-        if [ "$cur_hash" != "$prev_hash" ]; then
-          sleep 0.3
-          enforce_single_landscape
-          prev_hash="$cur_hash"
-        fi
-        sleep 2
-      done
-    ) >/dev/null 2>&1 &
-
-    wait $KWIN_PID
+    exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
   '');
 
   nixpkgs.overlays = [
