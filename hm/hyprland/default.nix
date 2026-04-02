@@ -4,6 +4,7 @@
     cliphist
     dunst
     grim
+    grimblast          # grim+slurp wrapper：区域/窗口/全屏截图一条命令搞定
     hypridle
     hyprlock
     hyprpolkitagent
@@ -13,8 +14,10 @@
     playerctl
     rofi
     slurp
+    swappy             # 截图标注编辑器
     swww
     waybar
+    wf-recorder        # 轻量 Wayland 录屏，支持 slurp 区域选择
     wlogout
     wlr-randr
     wl-clipboard
@@ -35,6 +38,10 @@
 
   xdg.configFile."hypr/autostart.sh" = {
     source = ./autostart.sh;
+    executable = true;
+  };
+  xdg.configFile."hypr/scripts/record-toggle.sh" = {
+    source = ./scripts/record-toggle.sh;
     executable = true;
   };
   xdg.configFile."hypr/base.conf".source = ./config.txt;
