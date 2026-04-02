@@ -18,9 +18,8 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(36, 36, 42, 0.88);
   color: rgba(228, 228, 232, 0.85);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
+  font-size: 32px;
+  font-weight: 400;
 }
 
 button:focus,
@@ -29,15 +28,4 @@ button:hover {
   background: rgba(96, 165, 250, 0.22);
   color: #e4e4e8;
   border-color: rgba(96, 165, 250, 0.4);
-  font-weight: 600;
-}
-
-#lock,
-#logout,
-#suspend,
-#reboot,
-#shutdown {
-  background-repeat: no-repeat;
-  background-position: center 28px;
-  background-size: 32px;
 }

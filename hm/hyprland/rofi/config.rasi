@@ -1,8 +1,8 @@
 configuration {
   modi: "drun,window,run";
   show-icons: true;
-  icon-theme: "breeze-dark";
-  font: "CaskaydiaCove Nerd Font Mono 12";
+  icon-theme: "Fluent-dark";
+  font: "Noto Sans 12";
   terminal: "wezterm";
   drun-display-format: "{name}";
   window-format: "{w} · {c} · {t}";
@@ -20,7 +20,7 @@ configuration {
   selected: #60a5fa;
   urgent: #f87171;
   accent: #60a5fa;
-  font: "CaskaydiaCove Nerd Font Mono 12";
+  font: "Noto Sans 12";
 }
 
 window {

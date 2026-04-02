@@ -4,107 +4,147 @@ set -euo pipefail
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/keybinds.conf"
 [[ -f "$CONF" ]] || { notify-send "Keybind Cheatsheet" "keybinds.conf not found"; exit 1; }
 
-section=""
-entries=()
+declare -A raw=()
+declare -a order=()
+in_submap=""
+ws_mods="" move_ws_mods="" nav_mods="" move_mods=""
+
+trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"; echo "$s"; }
 
 fmt_mods() {
   local m="$1"
-  m="${m//\$mod/Super}"; m="${m//SUPER/Super}"; m="${m//SHIFT/Shift}"
-  m="${m//CTRL/Ctrl}"; m="${m//ALT/Alt}"
+  m="${m//\$mod/S}"; m="${m//SUPER/S}"; m="${m//SHIFT/⇧}"
+  m="${m//CTRL/C}"; m="${m//ALT/A}"
   m=$(echo "$m" | sed 's/  */ /g; s/^ //; s/ $//' | tr ' ' '+')
   echo "$m"
 }
 
-fmt_action() {
-  local dispatcher="$1" args="$2"
-  case "$dispatcher" in
-    exec)
+fmt_exec() {
+  local a="$1"
+  case "$a" in
+    *wezterm*)       echo "终端" ;;
+    *rofi*drun*)     echo "启动器" ;;
+    *rofi*window*)   echo "窗口列表" ;;
+    *emacsclient*monitors*) echo "编辑显示器" ;;
+    *emacsclient*)   echo "Emacs" ;;
+    *hyprlock*)      echo "锁屏" ;;
+    *wlogout*)       echo "电源菜单" ;;
+    *nm-connection*) echo "网络设置" ;;
+    *cliphist*)      echo "剪贴板" ;;
+    *grimblast*area*)    echo "截图(区域)" ;;
+    *grimblast*active*)  echo "截图(窗口)" ;;
+    *grimblast*screen*)  echo "截图(全屏)" ;;
+    *swappy*)        echo "截图+标注" ;;
+    *record-toggle*) echo "录屏" ;;
+    *keybind-cheatsheet*) echo "快捷键" ;;
+    *dolphin*)       echo "文件管理" ;;
+    *hyprctl*reload*) echo "重载配置" ;;
+    *suspend*)       echo "休眠" ;;
+    *"$fileManager"*) echo "文件管理" ;;
+    *)
       local cmd
-      cmd=$(echo "$args" | sed 's|^~/.config/hypr/scripts/||; s| .*||; s|.*/||')
+      cmd=$(echo "$a" | sed 's|^~/.config/hypr/scripts/||; s| .*||; s|.*/||')
       echo "$cmd" ;;
-    killactive)     echo "关闭窗口" ;;
-    exit)           echo "退出 Hyprland" ;;
-    togglefloating) echo "切换浮动" ;;
-    togglesplit)    echo "切换分割方向" ;;
-    cyclenext)
-      [[ "$args" == *prev* ]] && echo "上一个窗口" || echo "下一个窗口" ;;
-    movefocus)
-      case "$args" in
-        l) echo "聚焦 ← 左" ;; r) echo "聚焦 → 右" ;;
-        u) echo "聚焦 ↑ 上" ;; d) echo "聚焦 ↓ 下" ;; *) echo "聚焦 $args" ;;
-      esac ;;
-    movewindow)
-      case "$args" in
-        l) echo "移动窗口 ← 左" ;; r) echo "移动窗口 → 右" ;;
-        u) echo "移动窗口 ↑ 上" ;; d) echo "移动窗口 ↓ 下" ;; *) echo "移动窗口 $args" ;;
-      esac ;;
-    workspace)
-      case "$args" in
-        e-1) echo "上一个工作区" ;; e+1) echo "下一个工作区" ;;
-        *)   echo "工作区 $args" ;;
-      esac ;;
-    movetoworkspace)
-      case "$args" in
-        e-1) echo "移到上一个工作区" ;; e+1) echo "移到下一个工作区" ;;
-        special:*) echo "移到特殊工作区" ;;
-        *)   echo "移到工作区 $args" ;;
-      esac ;;
-    togglespecialworkspace) echo "切换特殊工作区" ;;
-    submap)
-      [[ "$args" == "reset" ]] && echo "退出子图" || echo "进入 [$args] 子图" ;;
-    *) echo "$dispatcher $args" ;;
   esac
 }
 
-in_submap=""
+add() {
+  local k="$1" v="$2"
+  if [[ -z "${raw[$k]+x}" ]]; then
+    order+=("$k")
+  fi
+  raw["$k"]="$v"
+}
 
 while IFS= read -r line; do
-  line="${line#"${line%%[![:space:]]*}"}"
-  [[ -z "$line" ]] && continue
+  line="$(trim "$line")"
+  [[ -z "$line" || "$line" =~ ^# || "$line" =~ ^\$ ]] && continue
 
-  # 注释行 → 分区标题（去掉装饰用的 ─━═ 线条）
-  if [[ "$line" =~ ^#\ *(.+) ]]; then
-    header="${BASH_REMATCH[1]}"
-    header=$(echo "$header" | sed 's/[─━═]//g; s/^[[:space:]]*//; s/[[:space:]]*$//')
-    [[ -n "$header" ]] && section="$header"
-    continue
-  fi
-
-  # submap 状态机：进入/退出子图影响后续 bind 的前缀显示
   if [[ "$line" =~ ^submap\ *=\ *(.+) ]]; then
-    sub="${BASH_REMATCH[1]}"
-    sub="${sub#"${sub%%[![:space:]]*}"}"
+    sub="$(trim "${BASH_REMATCH[1]}")"
     [[ "$sub" == "reset" ]] && in_submap="" || in_submap="$sub"
     continue
   fi
 
-  [[ "$line" =~ ^\$ ]] && continue
+  [[ "$line" =~ ^bind[eld]*\ *=\ *(.+) ]] || continue
+  IFS=',' read -r mods key dispatcher args <<< "${BASH_REMATCH[1]}"
+  mods="$(trim "$mods")"; key="$(trim "$key")"
+  dispatcher="$(trim "$dispatcher")"; args="$(trim "$args")"
+  [[ "$key" == "catchall" ]] && continue
 
-  if [[ "$line" =~ ^bind[eld]*\ *=\ *(.+) ]]; then
-    IFS=',' read -r mods key dispatcher args <<< "${BASH_REMATCH[1]}"
-    mods="${mods#"${mods%%[![:space:]]*}"}"; mods="${mods%"${mods##*[![:space:]]}"}"
-    key="${key#"${key%%[![:space:]]*}"}"; key="${key%"${key##*[![:space:]]}"}"
-    dispatcher="${dispatcher#"${dispatcher%%[![:space:]]*}"}"; dispatcher="${dispatcher%"${dispatcher##*[![:space:]]}"}"
-    args="${args#"${args%%[![:space:]]*}"}"; args="${args%"${args##*[![:space:]]}"}"
+  local_mods="$(fmt_mods "$mods")"
+  prefix=""
+  [[ -n "$in_submap" ]] && prefix="[X] "
 
-    [[ "$key" == "catchall" ]] && continue
-
-    if [[ -n "$mods" ]]; then
-      combo="$(fmt_mods "$mods")+${key}"
-    else
-      combo="$key"
-    fi
-    [[ -n "$in_submap" ]] && combo="[${in_submap}] ${combo}"
-
-    action="$(fmt_action "$dispatcher" "$args")"
-    printf -v entry "%-30s  %s" "$combo" "$action"
-
-    if [[ -n "$section" ]]; then
-      entries+=("── $section ──")
-      section=""
-    fi
-    entries+=("$entry")
+  if [[ -z "$in_submap" && "$dispatcher" == "workspace" && "$key" =~ ^[0-9]$ ]]; then
+    ws_mods="$local_mods"
+    continue
   fi
+  if [[ -z "$in_submap" && "$dispatcher" == "movetoworkspace" && "$key" =~ ^[0-9]$ ]]; then
+    move_ws_mods="$local_mods"
+    continue
+  fi
+  if [[ -z "$in_submap" && "$dispatcher" == "movefocus" ]]; then
+    nav_mods="$local_mods"
+    continue
+  fi
+  if [[ -z "$in_submap" && "$dispatcher" == "movewindow" ]]; then
+    move_mods="$local_mods"
+    continue
+  fi
+
+  if [[ -n "$local_mods" ]]; then
+    combo="${prefix}${local_mods}+${key}"
+  else
+    combo="${prefix}${key}"
+  fi
+
+  case "$dispatcher" in
+    exec)                   act="$(fmt_exec "$args")" ;;
+    killactive)             act="关闭窗口" ;;
+    exit)                   act="退出" ;;
+    togglefloating)         act="浮动" ;;
+    togglesplit)            act="切换分割" ;;
+    cyclenext)              [[ "$args" == *prev* ]] && act="上一窗口" || act="下一窗口" ;;
+    workspace)
+      case "$args" in
+        e-1) act="上一工作区" ;; e+1) act="下一工作区" ;; *) act="工作区$args" ;;
+      esac ;;
+    movetoworkspace)
+      case "$args" in
+        e-1) act="移到上一区" ;; e+1) act="移到下一区" ;;
+        special:*) act="移到特殊区" ;; *) act="移到工作区$args" ;;
+      esac ;;
+    togglespecialworkspace) act="特殊工作区" ;;
+    submap)
+      [[ "$args" == "reset" ]] && act="退出子图" || act="前缀键" ;;
+    *) act="$dispatcher $args" ;;
+  esac
+
+  add "$combo" "$act"
 done < "$CONF"
 
-printf '%s\n' "${entries[@]}" | rofi -dmenu -i -p "⌨ 快捷键" -no-custom -theme-str 'window {width: 50%;} listview {lines: 30;}'
+[[ -n "$nav_mods" ]]     && add "${nav_mods}+B/F/P/N" "焦点 ←→↑↓"
+[[ -n "$move_mods" ]]    && add "${move_mods}+B/F/P/N" "移窗 ←→↑↓"
+[[ -n "$ws_mods" ]]      && add "${ws_mods}+1~9" "切换工作区"
+[[ -n "$move_ws_mods" ]] && add "${move_ws_mods}+1~9" "移到工作区"
+
+lines=()
+for k in "${order[@]}"; do
+  lines+=("${k}  ${raw[$k]}")
+done
+
+n=${#lines[@]}
+half=$(( (n + 1) / 2 ))
+
+output=""
+for ((i=0; i<half; i++)); do
+  left="${lines[$i]}"
+  j=$((i + half))
+  right=""
+  (( j < n )) && right="${lines[$j]}"
+  output+="$(printf '%-28s│ %s' "$left" "$right")"$'\n'
+done
+
+echo -n "$output" | rofi -dmenu -i -p "⌨" -no-custom \
+  -theme-str 'window {width: 52%;} listview {lines: '"$half"'; spacing: 0px; fixed-height: false;} element {padding: 2px 6px;} element-text {font: "CaskaydiaCove Nerd Font Mono 10";}'
