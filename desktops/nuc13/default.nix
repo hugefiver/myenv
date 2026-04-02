@@ -23,10 +23,14 @@
   };
 
   networking.hostName = "desktop-nuc13";
-  # NetworkManager 全权管理网络，禁止 NixOS scripted backend 为每个接口
-  # 生成 DHCP 服务（会创建 BindsTo=sys-subsystem-net-devices-wlo1.device，
-  # WiFi 设备未就绪时卡 90s DefaultDeviceTimeoutSec）。
+  # NetworkManager 全权管理网络，scripted backend 不需要管任何接口。
+  # networking.useDHCP = false 仅关闭全局默认；但 nixos-facter 会为
+  # facter.json 中检测到的每个接口生成 useDHCP = mkDefault true，
+  # 导致 scripted backend 仍创建 BindsTo=sys-subsystem-net-devices-wlo1.device
+  # 的服务单元——WiFi 固件加载慢时卡 90s。
+  # mkForce 清空 interfaces 确保 scripted backend 不生成任何接口服务。
   networking.useDHCP = false;
+  networking.interfaces = lib.mkForce {};
   hardware.facter.reportPath = ./facter.json;
   hardware.enableRedistributableFirmware = true;
 
