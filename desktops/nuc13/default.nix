@@ -56,36 +56,53 @@
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
     kscreenDoctor = lib.getExe' pkgs.kdePackages.libkscreen "kscreen-doctor";
+    udevadm = lib.getExe' pkgs.systemd "udevadm";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
 
     ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard &
     KWIN_PID=$!
 
-    # 一次性禁用竖屏（等 kwin 就绪后执行，不做轮询）
     (
-      sleep 3
-      for _s in "$XDG_RUNTIME_DIR"/wayland-*; do
-        [ -S "$_s" ] && export WAYLAND_DISPLAY="$(basename "$_s")" && break
-      done
-      [ -z "''${WAYLAND_DISPLAY:-}" ] && exit 0
+      find_socket() {
+        for _s in "$XDG_RUNTIME_DIR"/wayland-*; do
+          [ -S "$_s" ] && WAYLAND_DISPLAY="$(basename "$_s")" && export WAYLAND_DISPLAY && return 0
+        done
+        return 1
+      }
 
-      ${kscreenDoctor} -o 2>/dev/null | awk '
-        /^Output:/ { name=$3 }
-        /Geometry:/ {
-          split($NF, a, "x")
-          if (a[2]+0 > a[1]+0) portrait[np++] = name
-          else landscape++
-        }
-        END {
-          if (landscape > 0) for (i in portrait) print portrait[i]
-        }
-      ' | while read -r out; do
-        ${kscreenDoctor} "output.$out.disable" 2>/dev/null || true
+      disable_portrait() {
+        find_socket || return
+        ${kscreenDoctor} -o 2>/dev/null | awk '
+          /^Output:/ { name=$3 }
+          /Geometry:/ {
+            split($NF, a, "x")
+            if (a[2]+0 > a[1]+0) portrait[np++] = name
+            else landscape++
+          }
+          END {
+            if (landscape > 0) for (i in portrait) print portrait[i]
+          }
+        ' | while read -r out; do
+          ${kscreenDoctor} "output.$out.disable" 2>/dev/null || true
+        done
+      }
+
+      sleep 3
+      disable_portrait
+
+      ${udevadm} monitor --subsystem-match=drm --kernel 2>/dev/null | while read -r _ts _action _rest; do
+        case "$_action" in change|add)
+          sleep 2
+          disable_portrait
+          ;;
+        esac
       done
     ) &
+    WATCHER_PID=$!
 
     wait $KWIN_PID
+    kill $WATCHER_PID 2>/dev/null
   '');
 
   nixpkgs.overlays = [
