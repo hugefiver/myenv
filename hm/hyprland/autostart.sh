@@ -10,6 +10,11 @@ run_once() {
   fi
 }
 
+# NixOS UWSM 会话可能丢失 LOCALE_ARCHIVE，从系统环境补回
+if [ -z "${LOCALE_ARCHIVE:-}" ] && [ -f /etc/set-environment ]; then
+  eval "$(grep '^export LOCALE_ARCHIVE=' /etc/set-environment 2>/dev/null || true)"
+fi
+
 dbus-update-activation-environment --systemd --all >/dev/null 2>&1 || true
 
 # kwalletd6：Hyprland 下提供 Secret Service D-Bus API（KDE 会话自带，这里显式启动）。
