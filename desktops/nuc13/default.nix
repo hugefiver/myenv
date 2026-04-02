@@ -52,7 +52,7 @@
     "dm-cache-smq"
   ];
 
-  # ── SDDM: kwin 自动发现 GPU + 禁用竖屏 ─────────────────────
+  # ── SDDM: kwin 自动发现 GPU + 只保留一个输出 ────────────────
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
     kscreenDoctor = lib.getExe' pkgs.kdePackages.libkscreen "kscreen-doctor";
@@ -71,30 +71,23 @@
         return 1
       }
 
-      disable_portrait() {
+      keep_single_output() {
         find_socket || return
         ${kscreenDoctor} -o 2>/dev/null | awk '
-          /^Output:/ { name=$3 }
-          /Geometry:/ {
-            split($NF, a, "x")
-            if (a[2]+0 > a[1]+0) portrait[np++] = name
-            else landscape++
-          }
-          END {
-            if (landscape > 0) for (i in portrait) print portrait[i]
-          }
+          /^Output:/ && /enabled/ { names[n++] = $3 }
+          END { for (i = 1; i < n; i++) print names[i] }
         ' | while read -r out; do
           ${kscreenDoctor} "output.$out.disable" 2>/dev/null || true
         done
       }
 
       sleep 3
-      disable_portrait
+      keep_single_output
 
       ${udevadm} monitor --subsystem-match=drm --kernel 2>/dev/null | while read -r _ts _action _rest; do
         case "$_action" in change|add)
           sleep 2
-          disable_portrait
+          keep_single_output
           ;;
         esac
       done
@@ -123,10 +116,9 @@
   '';
 
   # ── 多 GPU 会话变量（Hyprland / aquamarine）─────────────────────
-  # env-hyprland 通过 UWSM source 也会设置这些，这里作为 fallback
-  # 确保即使 UWSM 未正确读取 env 文件也能让 Hyprland 找到双 GPU。
+  # AQ_DRM_DEVICES 由 env-hyprland 动态发现所有 card 设备设置，
+  # 这里只设不依赖设备枚举的静态标志。
   environment.sessionVariables = {
-    AQ_DRM_DEVICES = "/dev/dri/intel-igpu:/dev/dri/displaylink-card";
     AQ_MGPU_NO_EXPLICIT = "1";       # evdi 不支持 explicit sync
     WLR_NO_HARDWARE_CURSORS = "1";   # DisplayLink USB 链路下避免光标异常
   };

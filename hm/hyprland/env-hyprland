@@ -1,10 +1,15 @@
-# DisplayLink / 多 GPU 兼容性变量。
-# 固定让 Hyprland 优先用 Intel iGPU 渲染，同时允许 evdi(DisplayLink) 输出。
+# Intel iGPU 作为主渲染 GPU，动态发现所有 DisplayLink（evdi）输出设备。
+# UWSM 在启动 Hyprland 前 source 此文件。
 
-export AQ_DRM_DEVICES=/dev/dri/intel-igpu:/dev/dri/displaylink-card
+_igpu_real=$(readlink -f /dev/dri/intel-igpu 2>/dev/null || echo "")
+_devs="/dev/dri/intel-igpu"
+for _c in /dev/dri/card*; do
+  [ ! -e "$_c" ] && continue
+  _real=$(readlink -f "$_c")
+  [ "$_real" = "$_igpu_real" ] && continue
+  _devs="$_devs:$_c"
+done
+export AQ_DRM_DEVICES="$_devs"
 
-# DisplayLink + 多 GPU 下常见的小窗口损坏 / 同步异常缓解项。
 export AQ_MGPU_NO_EXPLICIT=1
-
-# USB 显示链路下的鼠标卡顿、光标异常，优先先禁用硬件光标平面。
 export WLR_NO_HARDWARE_CURSORS=1

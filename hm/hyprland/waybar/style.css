@@ -81,6 +81,7 @@ tooltip {
   border: none;
   border-radius: 0;
   min-height: 0;
+  font-size: 18px;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 
