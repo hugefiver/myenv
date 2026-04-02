@@ -52,50 +52,12 @@
     "dm-cache-smq"
   ];
 
-  # ── SDDM: kwin 自动发现 GPU + 只保留一个输出 ────────────────
+  # ── SDDM: kwin 自动发现所有 GPU ──────────────────────────────
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
-    kscreenDoctor = lib.getExe' pkgs.kdePackages.libkscreen "kscreen-doctor";
-    udevadm = lib.getExe' pkgs.systemd "udevadm";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
-
-    ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard &
-    KWIN_PID=$!
-
-    (
-      find_socket() {
-        for _s in "$XDG_RUNTIME_DIR"/wayland-*; do
-          [ -S "$_s" ] && WAYLAND_DISPLAY="$(basename "$_s")" && export WAYLAND_DISPLAY && return 0
-        done
-        return 1
-      }
-
-      keep_single_output() {
-        find_socket || return
-        ${kscreenDoctor} -o 2>/dev/null | awk '
-          /^Output:/ && /enabled/ { names[n++] = $3 }
-          END { for (i = 1; i < n; i++) print names[i] }
-        ' | while read -r out; do
-          ${kscreenDoctor} "output.$out.disable" 2>/dev/null || true
-        done
-      }
-
-      sleep 3
-      keep_single_output
-
-      ${udevadm} monitor --subsystem-match=drm --kernel 2>/dev/null | while read -r _ts _action _rest; do
-        case "$_action" in change|add)
-          sleep 2
-          keep_single_output
-          ;;
-        esac
-      done
-    ) &
-    WATCHER_PID=$!
-
-    wait $KWIN_PID
-    kill $WATCHER_PID 2>/dev/null
+    exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
   '');
 
   nixpkgs.overlays = [
