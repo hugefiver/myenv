@@ -4,11 +4,11 @@
     wayland.enable = true;
     settings = {
       General = {
-        GreeterEnvironment = "QT_FONT_DPI=144";
+        GreeterEnvironment = "QT_FONT_DPI=120";
       };
       Theme = {
         CursorTheme = "breeze_cursors";
-        CursorSize = 36;
+        CursorSize = 30;
       };
     };
   };

@@ -3,74 +3,104 @@
   border-radius: 0;
   min-height: 0;
   font-family: "CaskaydiaCove Nerd Font Mono", "Noto Sans CJK SC", "Noto Color Emoji";
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 window#waybar {
   background: transparent;
-  color: #dce3ff;
+  color: #e4e4e8;
 }
 
 tooltip {
-  background: rgba(17, 17, 27, 0.96);
-  border: 1px solid rgba(137, 180, 250, 0.75);
-  border-radius: 14px;
+  background: rgba(32, 32, 36, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #e4e4e8;
 }
 
 #custom-launcher,
 #workspaces,
 #window,
 #clock,
-#cpu,
-#memory,
-#temperature,
-#pulseaudio,
-#network,
-#battery,
+#hardware,
+#status,
 #tray,
 #custom-power {
-  margin: 0 4px;
-  padding: 0 16px;
-  min-height: 42px;
-  background: linear-gradient(180deg, rgba(49, 50, 68, 0.94), rgba(30, 30, 46, 0.88));
-  border: 1px solid rgba(137, 180, 250, 0.16);
-  border-radius: 18px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  margin: 0 2px;
+  padding: 0 10px;
+  min-height: 34px;
+  background: rgba(36, 36, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
 }
 
 #workspaces button {
-  padding: 0 12px;
-  margin: 6px 4px;
-  color: #a6adc8;
-  border-radius: 12px;
+  padding: 0 8px;
+  margin: 4px 2px;
+  color: #9a9aa6;
+  border-radius: 6px;
 }
 
 #workspaces button.active {
-  color: #11111b;
-  background: linear-gradient(90deg, #7dc4e4, #b4befe 55%, #cba6f7);
-  box-shadow: 0 6px 18px rgba(137, 180, 250, 0.35);
+  color: #ffffff;
+  background: rgba(96, 165, 250, 0.28);
+  border: 1px solid rgba(96, 165, 250, 0.4);
 }
 
 #workspaces button:hover {
-  color: #cdd6f4;
-  background: rgba(137, 180, 250, 0.18);
+  color: #e4e4e8;
+  background: rgba(255, 255, 255, 0.08);
   box-shadow: inherit;
   text-shadow: inherit;
 }
+
 #custom-launcher,
 #custom-power {
-  padding: 0 18px;
-  color: #11111b;
-  background: linear-gradient(135deg, #89dceb, #89b4fa 58%, #cba6f7);
+  padding: 0 12px;
+  color: #ffffff;
+  background: rgba(96, 165, 250, 0.24);
+  border: 1px solid rgba(96, 165, 250, 0.3);
 }
 
 #window {
-  min-width: 280px;
+  min-width: 200px;
+  color: #b0b0ba;
 }
 
 #clock {
-  color: #f9e2af;
+  color: #e4e4e8;
   font-weight: 700;
+}
+
+#cpu, #memory, #temperature,
+#pulseaudio, #network, #battery {
+  padding: 0 8px;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#cpu, #pulseaudio {
+  border-left: none;
+}
+
+#cpu {
+  color: #89b4fa;
+}
+
+#memory {
+  color: #cba6f7;
+}
+
+#temperature {
+  color: #a6e3a1;
+}
+
+#temperature.critical {
+  color: #f38ba8;
 }
 
 #pulseaudio {
@@ -94,5 +124,5 @@ tooltip {
 }
 
 #tray {
-  padding-right: 12px;
+  padding: 0 8px;
 }

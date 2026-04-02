@@ -3,7 +3,7 @@ set -euo pipefail
 
 MIN_RES=2560
 MIN_DIAG_INCH=24
-TARGET_SCALE="1.5"
+TARGET_SCALE="1.25"
 
 name="" res_w=0 res_h=0 phys_w=0 phys_h=0
 

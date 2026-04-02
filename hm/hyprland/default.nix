@@ -49,6 +49,10 @@
     source = ./scripts/auto-scale.sh;
     executable = true;
   };
+  xdg.configFile."hypr/scripts/keybind-cheatsheet.sh" = {
+    source = ./scripts/keybind-cheatsheet.sh;
+    executable = true;
+  };
   xdg.configFile."hypr/base.conf".source = ./config.txt;
   xdg.configFile."hypr/keybinds.conf".source = ./keybinds.conf;
   xdg.configFile."hypr/hypridle.conf".source = ./hypridle.conf;

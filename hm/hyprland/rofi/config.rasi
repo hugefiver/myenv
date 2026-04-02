@@ -12,34 +12,34 @@ configuration {
 }
 
 * {
-  bg: rgba(17, 17, 27, 0.92);
-  bg-alt: rgba(49, 50, 68, 0.82);
-  fg: #dde4ff;
-  muted: #a6adc8;
-  border: #89dceb;
-  selected: #cba6f7;
-  urgent: #f38ba8;
-  accent: #89b4fa;
+  bg: rgba(26, 26, 34, 0.92);
+  bg-alt: rgba(255, 255, 255, 0.06);
+  fg: #e4e4e8;
+  muted: #9a9aa6;
+  border: rgba(255, 255, 255, 0.08);
+  selected: #60a5fa;
+  urgent: #f87171;
+  accent: #60a5fa;
   font: "CaskaydiaCove Nerd Font Mono 12";
 }
 
 window {
   location: center;
-  width: 44%;
-  border: 2px;
+  width: 42%;
+  border: 1px;
   border-color: @border;
-  border-radius: 22px;
+  border-radius: 12px;
   background-color: @bg;
 }
 
 mainbox {
-  spacing: 12px;
-  padding: 16px;
+  spacing: 8px;
+  padding: 14px;
   background-color: transparent;
 }
 
 inputbar {
-  padding: 14px;
+  padding: 12px;
   border: 0 0 1px 0;
   border-color: @bg-alt;
   children: [ prompt, entry ];
@@ -54,11 +54,11 @@ prompt {
 entry {
   text-color: @fg;
   placeholder-color: @muted;
-  placeholder: "Run, search, or switch";
+  placeholder: "搜索应用、窗口或命令";
 }
 
 listview {
-  lines: 9;
+  lines: 8;
   columns: 1;
   fixed-height: false;
   scrollbar: false;
@@ -66,8 +66,8 @@ listview {
 }
 
 element {
-  padding: 12px;
-  border-radius: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
 }
 
 element selected {
@@ -80,8 +80,8 @@ element-text {
 }
 
 element-icon {
-  size: 1.35em;
-  margin: 0 12px 0 2px;
+  size: 1.3em;
+  margin: 0 10px 0 2px;
 }
 
 message {

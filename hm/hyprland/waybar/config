@@ -1,17 +1,17 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 42,
-  "margin-top": 10,
-  "margin-left": 12,
-  "margin-right": 12,
-  "spacing": 10,
+  "height": 34,
+  "margin-top": 6,
+  "margin-left": 8,
+  "margin-right": 8,
+  "spacing": 4,
   "modules-left": ["custom/launcher", "hyprland/workspaces", "hyprland/window"],
   "modules-center": ["clock"],
-  "modules-right": ["cpu", "memory", "temperature", "pulseaudio", "network", "battery", "tray", "custom/power"],
+  "modules-right": ["group/hardware", "group/status", "tray", "custom/power"],
 
   "custom/launcher": {
-    "format": "",
+    "format": "",
     "tooltip": false,
     "on-click": "rofi -show drun -show-icons"
   },
@@ -33,14 +33,14 @@
       "7": "七",
       "8": "八",
       "9": "九",
-      "active": "",
-      "default": ""
+      "active": "",
+      "default": ""
     }
   },
 
   "hyprland/window": {
     "format": "{}",
-    "max-length": 56,
+    "max-length": 48,
     "separate-outputs": true
   },
 
@@ -59,39 +59,52 @@
     }
   },
 
+  "group/hardware": {
+    "orientation": "inherit",
+    "modules": ["cpu", "memory", "temperature"]
+  },
+
+  "group/status": {
+    "orientation": "inherit",
+    "modules": ["pulseaudio", "network", "battery"]
+  },
+
   "cpu": {
     "interval": 3,
-    "format": " {usage}%",
+    "format": " {usage}%",
     "tooltip": true
   },
 
   "memory": {
     "interval": 5,
-    "format": " {}%",
+    "format": " {}%",
     "tooltip-format": "内存占用 {used:0.1f}G / {total:0.1f}G"
   },
 
   "temperature": {
     "critical-threshold": 80,
-    "format": " {temperatureC}°C"
+    "hwmon-path-abs": "/sys/devices/platform/coretemp.0/hwmon",
+    "input-filename": "temp1_input",
+    "format": "{icon} {temperatureC}°C",
+    "format-icons": ["", "", "", "", ""]
   },
 
   "pulseaudio": {
     "scroll-step": 5,
     "format": "{icon} {volume}%",
-    "format-muted": " mute",
+    "format-muted": "󰝟 mute",
     "format-icons": {
-      "default": ["", "", ""]
+      "default": ["", "", ""]
     },
     "on-click": "pavucontrol"
   },
 
   "network": {
     "interval": 3,
-    "format-wifi": " {essid} ({signalStrength}%)",
+    "format-wifi": " {essid}",
     "format-ethernet": "󰈀 {ipaddr}",
     "format-linked": "󰈀 {ifname}",
-    "format-disconnected": "󰖪 offline",
+    "format-disconnected": "󰖪",
     "tooltip-format-wifi": "{essid}\n信号: {signalStrength}%\nIP: {ipaddr}/{cidr}\n频率: {frequency}MHz",
     "tooltip-format-ethernet": "{ifname}\n{ipaddr}/{cidr}",
     "on-click": "wezterm start --always-new-process -- nmtui",
@@ -105,17 +118,17 @@
     },
     "format": "{icon} {capacity}%",
     "format-charging": "󰂄 {capacity}%",
-    "format-full": "󰁹 {capacity}%",
+    "format-full": "󰁹",
     "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
   },
 
   "tray": {
-    "icon-size": 16,
-    "spacing": 10
+    "icon-size": 15,
+    "spacing": 6
   },
 
   "custom/power": {
-    "format": "",
+    "format": "",
     "tooltip": false,
     "on-click": "wlogout"
   }
