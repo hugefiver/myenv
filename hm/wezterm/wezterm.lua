@@ -7,7 +7,7 @@ return {
     "Noto Color Emoji",
   }),
   font_size = 12.5,
-  color_scheme = "Catppuccin Mocha",
+  color_scheme = "Kanagawa (Gogh)",
   default_prog = { "zsh", "-l" },
   adjust_window_size_when_changing_font_size = false,
   window_background_opacity = 0.94,
@@ -15,7 +15,7 @@ return {
   hide_tab_bar_if_only_one_tab = true,
   use_fancy_tab_bar = false,
   default_cursor_style = "BlinkingBar",
-  copy_on_select = true,
+  copy_on_select = false,
   window_padding = {
     left = 10,
     right = 10,

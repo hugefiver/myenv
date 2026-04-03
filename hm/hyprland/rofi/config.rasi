@@ -14,15 +14,15 @@ configuration {
 }
 
 * {
-  bg: rgba(28, 28, 36, 0.88);
-  bg-alt: rgba(255, 255, 255, 0.04);
-  fg: #e8e8ec;
-  muted: #888996;
-  border: rgba(255, 255, 255, 0.06);
-  selected: rgba(96, 165, 250, 0.18);
-  selected-border: rgba(96, 165, 250, 0.4);
-  urgent: #f87171;
-  accent: #60a5fa;
+  bg: rgba(30, 27, 24, 0.90);
+  bg-alt: rgba(219, 175, 110, 0.06);
+  fg: #e6ddd4;
+  muted: #968b80;
+  border: rgba(219, 175, 110, 0.10);
+  selected: rgba(219, 168, 107, 0.18);
+  selected-border: rgba(219, 168, 107, 0.4);
+  urgent: #f28b82;
+  accent: #dba86b;
   font: "Noto Sans 12";
 }
 

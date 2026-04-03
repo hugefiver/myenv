@@ -8,15 +8,15 @@
 
 window#waybar {
   background: transparent;
-  color: #e4e4e8;
+  color: #e6ddd4;
 }
 
 tooltip {
-  background: rgba(28, 28, 32, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  color: #e4e4e8;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: rgba(42, 37, 32, 0.95);
+  border: 1px solid rgba(219, 175, 110, 0.10);
+  border-radius: 14px;
+  color: #e6ddd4;
+  box-shadow: 0 4px 12px rgba(26, 18, 10, 0.35);
 }
 
 #custom-launcher,
@@ -30,32 +30,32 @@ tooltip {
   margin: 0 2px;
   padding: 0 10px;
   min-height: 26px;
-  background: rgba(30, 30, 36, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(42, 37, 32, 0.78);
+  border: 1px solid rgba(219, 175, 110, 0.08);
   border-radius: 14px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(26, 18, 10, 0.25);
   transition: background 0.3s ease;
 }
 
 #workspaces button {
   padding: 0 8px;
   margin: 2px 2px;
-  color: #9a9aa6;
+  color: #968b80;
   border-radius: 12px;
   min-width: 28px;
   transition: all 0.3s ease;
 }
 
 #workspaces button.active {
-  color: #ffffff;
-  background: rgba(96, 165, 250, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #faf4ee;
+  background: rgba(219, 168, 107, 0.28);
+  border: 1px solid rgba(219, 175, 110, 0.12);
   min-width: 40px;
 }
 
 #workspaces button:hover {
-  color: #e4e4e8;
-  background: rgba(255, 255, 255, 0.1);
+  color: #e6ddd4;
+  background: rgba(219, 175, 110, 0.12);
   box-shadow: inherit;
   text-shadow: inherit;
 }
@@ -67,25 +67,25 @@ tooltip {
 #custom-launcher,
 #custom-power {
   padding: 0 12px;
-  color: #ffffff;
-  background: rgba(96, 165, 250, 0.24);
-  border: 1px solid rgba(96, 165, 250, 0.3);
+  color: #faf4ee;
+  background: rgba(219, 168, 107, 0.24);
+  border: 1px solid rgba(219, 168, 107, 0.3);
   font-size: 22px;
   border-radius: 14px;
 }
 
 #custom-launcher:hover,
 #custom-power:hover {
-  background: rgba(96, 165, 250, 0.35);
+  background: rgba(219, 168, 107, 0.38);
 }
 
 #window {
   min-width: 200px;
-  color: #b0b0ba;
+  color: #968b80;
 }
 
 #clock {
-  color: #e4e4e8;
+  color: #e6ddd4;
   font-weight: 600;
   font-size: 14px;
 }
@@ -99,7 +99,7 @@ tooltip {
   border-radius: 0;
   min-height: 0;
   font-size: 15px;
-  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 1px solid rgba(219, 175, 110, 0.06);
 }
 
 #cpu, #pulseaudio {
@@ -107,39 +107,39 @@ tooltip {
 }
 
 #cpu {
-  color: #89b4fa;
+  color: #7fb4ca;
 }
 
 #memory {
-  color: #cba6f7;
+  color: #d2a8c0;
 }
 
 #temperature {
-  color: #a6e3a1;
+  color: #a8c686;
 }
 
 #temperature.critical {
-  color: #f38ba8;
+  color: #f28b82;
 }
 
 #pulseaudio {
-  color: #89dceb;
+  color: #7aa89f;
 }
 
 #network {
-  color: #94e2d5;
+  color: #98bb6c;
 }
 
 #battery {
-  color: #a6e3a1;
+  color: #a8c686;
 }
 
 #battery.warning {
-  color: #f9e2af;
+  color: #dba86b;
 }
 
 #battery.critical {
-  color: #f38ba8;
+  color: #f28b82;
 }
 
 #tray {
