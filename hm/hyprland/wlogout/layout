@@ -2,31 +2,31 @@
   {
     "label": "lock",
     "action": "hyprlock",
-    "text": "",
+    "text": "锁屏",
     "keybind": "l"
   },
   {
     "label": "logout",
     "action": "hyprctl dispatch exit",
-    "text": "",
+    "text": "注销",
     "keybind": "e"
   },
   {
     "label": "suspend",
     "action": "systemctl suspend",
-    "text": "",
+    "text": "休眠",
     "keybind": "s"
   },
   {
     "label": "reboot",
     "action": "systemctl reboot",
-    "text": "",
+    "text": "重启",
     "keybind": "r"
   },
   {
     "label": "shutdown",
     "action": "systemctl poweroff",
-    "text": "",
+    "text": "关机",
     "keybind": "p"
   }
 ]

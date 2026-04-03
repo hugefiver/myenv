@@ -71,4 +71,3 @@ fi
 ) >/dev/null 2>&1 &
 
 run_once 'waybar-autohide' ~/.config/hypr/scripts/waybar-autohide.sh
-run_once 'popup-dismiss' ~/.config/hypr/scripts/popup-dismiss.sh

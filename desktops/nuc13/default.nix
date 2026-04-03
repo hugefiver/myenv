@@ -52,11 +52,24 @@
     "dm-cache-smq"
   ];
 
-  # ── SDDM: kwin 自动发现所有 GPU ──────────────────────────────
+  # ── SDDM: 优先只在横屏(60PZCH3)显示 ──────────────────────────
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
+    grep = "${pkgs.gnugrep}/bin/grep";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
+
+    for _conn in /sys/class/drm/card*-*; do
+      [ -d "$_conn" ] || continue
+      [ -f "$_conn/edid" ] || continue
+      if ${grep} -qa '60PZCH3' "$_conn/edid" 2>/dev/null; then
+        _bn=''${_conn##*/}
+        _card=''${_bn%%-*}
+        export KWIN_DRM_DEVICES="/dev/dri/intel-igpu:/dev/dri/$_card"
+        break
+      fi
+    done
+
     exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
   '');
 

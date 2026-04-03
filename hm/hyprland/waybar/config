@@ -18,21 +18,11 @@
 
   "hyprland/workspaces": {
     "disable-scroll": false,
-    "all-outputs": true,
-    "format": "{icon}",
+    "all-outputs": false,
+    "format": "{name}",
     "persistent-workspaces": {
-      "*": [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    },
-    "format-icons": {
-      "1": "一",
-      "2": "二",
-      "3": "三",
-      "4": "四",
-      "5": "五",
-      "6": "六",
-      "7": "七",
-      "8": "八",
-      "9": "九"
+      "desc:Dell Inc. DELL U2720QM 60PZCH3": [1, 2, 3, 4, 5],
+      "desc:Dell Inc. DELL U2720QM FCV0DH3": [6, 7, 8, 9, 10]
     }
   },
 
@@ -128,6 +118,6 @@
   "custom/power": {
     "format": "󰐥",
     "tooltip": false,
-    "on-click": "wlogout"
+    "on-click": "pkill -x wlogout || wlogout"
   }
 }
