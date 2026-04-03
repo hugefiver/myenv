@@ -65,14 +65,14 @@ fmt "P 电源菜单    R 重载配置"       "S 休眠"
 } | rofi -dmenu -markup-rows -i -p "" -no-custom \
   -theme-str '
 * {
-  bg: rgba(30, 27, 24, 0.92);
+  bg: #1e1b18eb;
   fg: #e6ddd4;
   accent: #dba86b;
   font: "Noto Sans 12";
 }
 window {
   width: 52%;
-  border: 1px solid rgba(219,175,110,0.12);
+  border: 1px solid #dbaf6e1f;
   border-radius: 16px;
   background-color: @bg;
 }
@@ -95,7 +95,7 @@ element {
   text-color: @fg;
 }
 element selected {
-  background-color: rgba(219,168,107,0.12);
+  background-color: #dba86b1f;
   border-radius: 8px;
 }
 element-text {

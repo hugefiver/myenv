@@ -44,7 +44,7 @@ in {
   home.activation.rimeDeploySchemas = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     RIME_DIR="''${XDG_DATA_HOME:-$HOME/.local/share}/fcitx5/rime"
     mkdir -p "$RIME_DIR"
-    run ${fcitx5-rime-pkg}/bin/rime_deployer --build "$RIME_DIR" 2>/dev/null || true
+    run ${fcitx5-rime-pkg}/bin/rime_deployer --build "$RIME_DIR" --shared-data-dir ${fcitx5-rime-pkg}/share/rime-data 2>/dev/null || true
   '';
 
   # ── fcitx5 profile：键盘 + RIME ──────────────────────────────

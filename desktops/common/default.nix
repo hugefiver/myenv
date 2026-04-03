@@ -98,6 +98,18 @@
     pulse.enable = true;
   };
 
+  services.flatpak.enable = true;
+  systemd.services.flatpak-fcitx5-override = {
+    description = "Grant Flatpak apps access to fcitx5 socket";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "flatpak-system-helper.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.flatpak}/bin/flatpak override --filesystem=xdg-run/fcitx5";
+    };
+  };
+
   fonts.packages = with pkgs; [
     nerd-fonts.caskaydia-cove
     noto-fonts
