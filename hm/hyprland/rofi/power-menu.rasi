@@ -15,13 +15,14 @@ configuration {
   hover-select: true;
   me-select-entry: "";
   me-accept-entry: "MousePrimary";
+  click-to-exit: true;
 }
 
 window {
   location: northeast;
   anchor: northeast;
   x-offset: -8;
-  y-offset: 36;
+  y-offset: 4;
   width: 160px;
   border: 1px;
   border-color: @border-clr;

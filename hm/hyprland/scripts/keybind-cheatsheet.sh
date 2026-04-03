@@ -85,4 +85,4 @@ cat > "$IMG" << 'SVGEOF'
 SVGEOF
 fi
 
-exec swayimg --app-id=hypr-cheatsheet "$IMG"
+exec swayimg --class=hypr-cheatsheet "$IMG"
