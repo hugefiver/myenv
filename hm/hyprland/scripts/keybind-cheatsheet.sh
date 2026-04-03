@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/keybinds.conf"
 [[ -f "$CONF" ]] || { notify-send "Keybind Cheatsheet" "keybinds.conf not found"; exit 1; }
@@ -40,11 +40,7 @@ fmt_exec() {
     *dolphin*)       echo "文件管理" ;;
     *hyprctl*reload*) echo "重载配置" ;;
     *suspend*)       echo "休眠" ;;
-    *"$fileManager"*) echo "文件管理" ;;
-    *)
-      local cmd
-      cmd=$(echo "$a" | sed 's|^~/.config/hypr/scripts/||; s| .*||; s|.*/||')
-      echo "$cmd" ;;
+    *) echo "$a" | sed 's|^~/.config/hypr/scripts/||; s| .*||; s|.*/||' ;;
   esac
 }
 

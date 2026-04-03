@@ -91,6 +91,7 @@ animations {
 	animation = border, 1, 10, default
 	animation = borderangle, 1, 120, smoothIn, loop
 	animation = fade, 1, 4, md3_decel
+animation = layers, 1, 2, md3_decel, popin 80%
 	animation = workspaces, 1, 5, md3_decel, slide
 	animation = specialWorkspace, 1, 4, md3_decel, slidefadevert -20%
 }

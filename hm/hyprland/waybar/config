@@ -34,9 +34,9 @@
 
   "clock": {
     "locale": "zh_CN.UTF-8",
-    "format": "󰥔 {:%m月%d日 %a %H:%M}",
-    "format-alt": "󰃭 {:%Y年%m月%d日 %A}",
-    "tooltip-format": "<big>{:%Y年%m月%d日 %A}</big>\n<tt>{calendar}</tt>",
+    "format": "󰥔 {:%-m月%-d日 %H:%M %a}",
+    "format-alt": "󰃭 {:%Y年%-m月%-d日 %A}",
+    "tooltip-format": "<big>{:%Y年%-m月%-d日 %A}</big>\n<tt>{calendar}</tt>",
     "calendar": {
       "mode": "month",
       "mode-mon-col": 3,

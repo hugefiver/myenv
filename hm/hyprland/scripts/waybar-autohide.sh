@@ -13,7 +13,9 @@ FLASH_FILE="/tmp/waybar-autohide-flash"
 rm -f "$PINNED_FILE" "$FLASH_FILE"
 echo "visible" > "$STATE_FILE"
 
-bar_signal() { pkill -SIGUSR1 -x waybar 2>/dev/null || true; }
+# NixOS 的 waybar 被 makeWrapper 包装，实际进程名是 .waybar-wrapped
+# 不加 -x 做子串匹配，同时匹配 "waybar" 和 ".waybar-wrapped"
+bar_signal() { pkill -SIGUSR1 waybar 2>/dev/null || true; }
 
 bar_show() {
   [[ "$(<"$STATE_FILE")" == "visible" ]] && return
@@ -50,7 +52,12 @@ toggle_pin() {
 trap toggle_pin USR1
 trap 'kill $(jobs -p) 2>/dev/null; rm -f "$STATE_FILE" "$PINNED_FILE" "$FLASH_FILE"; exit 0' EXIT INT TERM
 
-sleep 0.5
+# 等 waybar 完全就绪再发信号
+for _i in $(seq 1 30); do
+  pgrep waybar >/dev/null 2>&1 && break
+  sleep 0.2
+done
+sleep 1.5
 bar_hide
 
 (

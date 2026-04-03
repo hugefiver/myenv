@@ -6,18 +6,21 @@ configuration {
   terminal: "wezterm";
   drun-display-format: "{name}";
   window-format: "{w} · {c} · {t}";
+  sort: true;
+  sorting-method: "normal";
   hover-select: true;
   me-select-entry: "";
   me-accept-entry: "";
 }
 
 * {
-  bg: rgba(26, 26, 34, 0.92);
-  bg-alt: rgba(255, 255, 255, 0.06);
-  fg: #e4e4e8;
-  muted: #9a9aa6;
-  border: rgba(255, 255, 255, 0.08);
-  selected: #60a5fa;
+  bg: rgba(28, 28, 36, 0.88);
+  bg-alt: rgba(255, 255, 255, 0.04);
+  fg: #e8e8ec;
+  muted: #888996;
+  border: rgba(255, 255, 255, 0.06);
+  selected: rgba(96, 165, 250, 0.18);
+  selected-border: rgba(96, 165, 250, 0.4);
   urgent: #f87171;
   accent: #60a5fa;
   font: "Noto Sans 12";
@@ -28,7 +31,7 @@ window {
   width: 42%;
   border: 1px;
   border-color: @border;
-  border-radius: 12px;
+  border-radius: 14px;
   background-color: @bg;
 }
 
@@ -39,9 +42,11 @@ mainbox {
 }
 
 inputbar {
-  padding: 12px;
-  border: 0 0 1px 0;
-  border-color: @bg-alt;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 10px;
+  background-color: @bg-alt;
+  margin: 0 0 4px 0;
   children: [ prompt, entry ];
 }
 
@@ -66,12 +71,15 @@ listview {
 }
 
 element {
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px;
+  border-color: transparent;
 }
 
 element selected {
-  background-color: @bg-alt;
+  background-color: @selected;
+  border-color: @selected-border;
   text-color: @fg;
 }
 
