@@ -23,7 +23,6 @@
     swww
     waybar
     wf-recorder        # 轻量 Wayland 录屏，支持 slurp 区域选择
-    wlogout
     wlr-randr
     wl-clipboard
   ];
@@ -76,6 +75,10 @@
     source = ./scripts/video-wallpaper.sh;
     executable = true;
   };
+  xdg.configFile."hypr/scripts/power-menu.sh" = {
+    source = ./scripts/power-menu.sh;
+    executable = true;
+  };
   xdg.configFile."hypr/base.conf".source = ./config.txt;
   xdg.configFile."hypr/keybinds.conf".source = ./keybinds.conf;
   xdg.configFile."hypr/hypridle.conf".source = ./hypridle.conf;
@@ -85,8 +88,7 @@
   xdg.configFile."uwsm/env-hyprland".source = ./env-hyprland;
   xdg.configFile."dunst/dunstrc".source = ./dunst/dunstrc;
   xdg.configFile."rofi/config.rasi".source = ./rofi/config.rasi;
+  xdg.configFile."rofi/power-menu.rasi".source = ./rofi/power-menu.rasi;
   xdg.configFile."waybar/config".source = ./waybar/config;
   xdg.configFile."waybar/style.css".source = ./waybar/style.css;
-  xdg.configFile."wlogout/layout".source = ./wlogout/layout;
-  xdg.configFile."wlogout/style.css".source = ./wlogout/style.css;
 }

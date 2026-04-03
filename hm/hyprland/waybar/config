@@ -119,7 +119,7 @@
   "custom/power": {
     "format": "󰐥",
     "tooltip": false,
-    "on-click": "pkill wlogout || wlogout"
+    "on-click": "~/.config/hypr/scripts/power-menu.sh"
   }
 },
 {

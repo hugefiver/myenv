@@ -1,0 +1,69 @@
+* {
+  bg: rgba(30, 27, 24, 0.92);
+  bg-alt: rgba(219, 175, 110, 0.06);
+  fg: #e6ddd4;
+  muted: #968b80;
+  border: rgba(219, 175, 110, 0.10);
+  selected: rgba(219, 168, 107, 0.18);
+  selected-border: rgba(219, 168, 107, 0.4);
+  accent: #dba86b;
+  font: "Noto Sans 12";
+}
+
+configuration {
+  hover-select: true;
+  me-select-entry: "";
+  me-accept-entry: "MousePrimary";
+}
+
+window {
+  location: northeast;
+  anchor: northeast;
+  x-offset: -8;
+  y-offset: 36;
+  width: 160px;
+  border: 1px;
+  border-color: @border;
+  border-radius: 12px;
+  background-color: @bg;
+}
+
+mainbox {
+  spacing: 0;
+  padding: 6px;
+  background-color: transparent;
+  children: [ listview ];
+}
+
+inputbar {
+  enabled: false;
+}
+
+listview {
+  lines: 5;
+  columns: 1;
+  fixed-height: true;
+  scrollbar: false;
+  padding: 0;
+  spacing: 2px;
+}
+
+element {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 0;
+  background-color: transparent;
+  text-color: @fg;
+}
+
+element selected {
+  background-color: @selected;
+  border: 1px;
+  border-color: @selected-border;
+  text-color: @fg;
+}
+
+element-text {
+  text-color: inherit;
+  vertical-align: 0.5;
+}
