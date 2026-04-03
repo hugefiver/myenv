@@ -87,7 +87,8 @@ fmt "P 电源菜单    R 重载配置"       "S 休眠  V 录屏"
 }
 window {
   width: 52%;
-  border: 1px solid #1fdbaf6e;
+  border: 1px;
+  border-color: #1fdbaf6e;
   border-radius: 16px;
   background-color: @bg;
 }
