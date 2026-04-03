@@ -14,7 +14,7 @@
   "custom/launcher": {
     "format": "󱄅",
     "tooltip": false,
-    "on-click": "rofi -show drun -show-icons"
+    "on-click": "~/.config/hypr/scripts/rofi-launcher.sh"
   },
 
   "hyprland/workspaces": {
@@ -119,6 +119,6 @@
   "custom/power": {
     "format": "󰐥",
     "tooltip": false,
-    "on-click": "pkill -x wlogout || wlogout"
+    "on-click": "pkill wlogout || wlogout"
   }
 }

@@ -1,4 +1,14 @@
-{ unstable, ... }: {
+{ unstable, lib, ... }:
+let
+  fcitx5-rime-pkg = unstable.fcitx5-rime.override {
+    librime = unstable.librime.override {
+      plugins = [ unstable.librime-lua ];
+    };
+    rimeDataPkgs = [
+      unstable.rime-ice
+    ];
+  };
+in {
   i18n.inputMethod = {
     enable = true;
     type = "fcitx5";
@@ -10,14 +20,7 @@
       libsForQt5.fcitx5-qt
       qt6Packages.fcitx5-chinese-addons
       fcitx5-fluent
-      (fcitx5-rime.override {
-        librime = unstable.librime.override {
-          plugins = [ unstable.librime-lua ];
-        };
-        rimeDataPkgs = [
-          unstable.rime-ice
-        ];
-      })
+      fcitx5-rime-pkg
     ];
   };
 
@@ -32,6 +35,17 @@
   home.sessionVariables = {
     XMODIFIERS = "@im=fcitx";
   };
+
+  xdg.configFile."fcitx5/config".text = ''
+    [Behavior]
+    ShareInputState=No
+  '';
+
+  home.activation.rimeDeploySchemas = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    RIME_DIR="''${XDG_DATA_HOME:-$HOME/.local/share}/fcitx5/rime"
+    mkdir -p "$RIME_DIR"
+    run ${fcitx5-rime-pkg}/bin/rime_deployer --build "$RIME_DIR" 2>/dev/null || true
+  '';
 
   # ── fcitx5 profile：键盘 + RIME ──────────────────────────────
   xdg.configFile."fcitx5/profile" = {
