@@ -12,4 +12,3 @@ done
 export AQ_DRM_DEVICES="$_devs"
 
 export AQ_MGPU_NO_EXPLICIT=1
-export WLR_NO_HARDWARE_CURSORS=1

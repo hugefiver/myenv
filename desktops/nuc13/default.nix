@@ -24,6 +24,7 @@
     tunMode = true;       # setcap cap_net_admin
     serviceMode = true;   # systemd 后台服务
   };
+  systemd.services.clash-verge.serviceConfig.RuntimeDirectoryMode = "0755";
   # TUN 接口需要 nftables 放通，否则流量被 rpfilter 丢弃
   # https://github.com/NixOS/nixpkgs/issues/477636
   networking.firewall = {
@@ -130,7 +131,6 @@
   # 这里只设不依赖设备枚举的静态标志。
   environment.sessionVariables = {
     AQ_MGPU_NO_EXPLICIT = "1";       # evdi 不支持 explicit sync
-    WLR_NO_HARDWARE_CURSORS = "1";   # DisplayLink USB 链路下避免光标异常
   };
 
   services.openssh = {

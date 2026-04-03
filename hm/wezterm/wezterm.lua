@@ -28,20 +28,7 @@ return {
     {
       event = { Up = { streak = 1, button = "Right" } },
       mods = "NONE",
-      action = act.InputSelector {
-        title = "Menu",
-        choices = {
-          { label = "Copy",  id = "copy" },
-          { label = "Paste", id = "paste" },
-        },
-        action = wezterm.action_callback(function(window, pane, id)
-          if id == "copy" then
-            window:perform_action(act.CopyTo("Clipboard"), pane)
-          elseif id == "paste" then
-            window:perform_action(act.PasteFrom("Clipboard"), pane)
-          end
-        end),
-      },
+      action = act.PasteFrom("Clipboard"),
     },
   },
 }

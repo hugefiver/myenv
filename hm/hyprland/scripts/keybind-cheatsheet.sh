@@ -37,6 +37,8 @@ fmt "&lt;Super+Shift&gt; S"            "移到特殊工作区"
 echo ""
 hdr "启动器"
 fmt "&lt;Super&gt; Space"              "应用启动器"
+fmt "  ├ Ctrl+Enter"                  "  浮动模式启动"
+fmt "  └ Shift+Enter"                 "  空闲工作区启动"
 fmt "&lt;Super+Shift&gt; Space"        "窗口列表"
 fmt "&lt;Super&gt; I"                  "Emacs"
 fmt "&lt;Super&gt; M"                  "文件管理器"
@@ -67,14 +69,14 @@ fmt "P 电源菜单    R 重载配置"       "S 休眠"
 } | rofi -dmenu -markup-rows -i -p "" -no-custom \
   -theme-str '
 * {
-  bg: #1e1b18eb;
+  bg: #eb1e1b18;
   fg: #e6ddd4;
   accent: #dba86b;
   font: "Noto Sans 12";
 }
 window {
   width: 52%;
-  border: 1px solid #dbaf6e1f;
+  border: 1px solid #1fdbaf6e;
   border-radius: 16px;
   background-color: @bg;
 }
@@ -97,7 +99,7 @@ element {
   text-color: @fg;
 }
 element selected {
-  background-color: #dba86b1f;
+  background-color: #1fdba86b;
   border-radius: 8px;
 }
 element-text {

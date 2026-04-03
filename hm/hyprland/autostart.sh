@@ -25,6 +25,7 @@ run_once '^hypridle$' hypridle
 run_once '^waybar$' waybar
 run_once '^dunst$' dunst
 run_once '^hyprpolkitagent$' hyprpolkitagent
+run_once 'clash-verge' clash-verge
 
 if ! pgrep -x swww-daemon >/dev/null 2>&1; then
   swww-daemon >/dev/null 2>&1 &
