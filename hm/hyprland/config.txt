@@ -150,3 +150,12 @@ bindel = , XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 bindl = , XF86AudioPlay, exec, playerctl play-pause
 bindl = , XF86AudioNext, exec, playerctl next
 bindl = , XF86AudioPrev, exec, playerctl previous
+
+plugin {
+	hyprexpo {
+		columns = 3
+		gap_size = 8
+		bg_col = rgba(1e1b18ee)
+		workspace_method = center current
+	}
+}
