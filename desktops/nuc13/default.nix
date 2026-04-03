@@ -16,6 +16,22 @@
 
     ./disk.nix
   ];
+
+  # ── Clash Verge Rev (TUN 代理) ────────────────────────────────
+  programs.clash-verge = {
+    enable = true;
+    package = unstable.clash-verge-rev;
+    tunMode = true;       # setcap cap_net_admin
+    serviceMode = true;   # systemd 后台服务
+  };
+  # TUN 接口需要 nftables 放通，否则流量被 rpfilter 丢弃
+  # https://github.com/NixOS/nixpkgs/issues/477636
+  networking.firewall = {
+    trustedInterfaces = [ "Mihomo" ];
+    extraReversePathFilterRules = ''
+      iifname { "Mihomo" } accept comment "clash-verge TUN"
+    '';
+  };
   
   boot.kernelPackages = pkgs.linuxPackages_zen;
   boot.kernel.features = {

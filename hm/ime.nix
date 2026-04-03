@@ -55,12 +55,38 @@
     '';
   };
 
-  # ── RIME：确保使用雾凇拼音 schema ──────────────────────────────
-  # rime-ice 的 default.yaml 已在共享数据目录（rimeDataPkgs），
-  # 此 custom 文件覆盖用户目录中可能存在的旧配置。
+  # ── RIME 全局配置 ──────────────────────────────────────────────
   xdg.dataFile."fcitx5/rime/default.custom.yaml".text = ''
     patch:
       schema_list:
         - schema: rime_ice
+      menu:
+        page_size: 7
+        alternative_select_labels: [ ①, ②, ③, ④, ⑤, ⑥, ⑦, ⑧, ⑨, ⑩ ]
+      ascii_composer:
+        switch_key:
+          Caps_Lock: clear
+          Shift_L: commit_code
+          Shift_R: commit_code
+          Control_L: noop
+          Control_R: noop
+  '';
+
+  # ── RIME：rime_ice schema 个性化 ────────────────────────────────
+  xdg.dataFile."fcitx5/rime/rime_ice.custom.yaml".text = ''
+    patch:
+      # 默认英文，左/右 Shift 切换
+      "switches/@0/states": [ Ａ, 中 ]
+      "switches/@0/reset": 1
+
+      # 模糊音
+      "speller/algebra/@before 0":
+        - derive/^([zcs])h/$1/          # zh ch sh → z c s
+        - derive/^([zcs])([^h])/$1h$2/  # z c s → zh ch sh
+        - derive/^l/n/
+        - derive/^n/l/
+        - derive/an$/ang/
+        - derive/en$/eng/
+        - derive/in$/ing/
   '';
 }
