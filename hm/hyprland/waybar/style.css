@@ -80,7 +80,7 @@ tooltip {
 }
 
 #window {
-  min-width: 200px;
+  min-width: 0;
   color: #968b80;
 }
 

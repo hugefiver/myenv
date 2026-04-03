@@ -14,7 +14,6 @@ rm -f "$PINNED_FILE" "$FLASH_FILE"
 echo "visible" > "$STATE_FILE"
 
 # NixOS 的 waybar 被 makeWrapper 包装，实际进程名是 .waybar-wrapped
-# 不加 -x 做子串匹配，同时匹配 "waybar" 和 ".waybar-wrapped"
 bar_signal() { pkill -SIGUSR1 waybar 2>/dev/null || true; }
 
 bar_show() {
@@ -29,14 +28,24 @@ bar_hide() {
   echo "hidden" > "$STATE_FILE"
 }
 
-cursor_y() {
-  local pos
-  pos=$(hyprctl cursorpos 2>/dev/null) || { echo 9999; return; }
-  if [[ "$pos" =~ ,\ *([0-9]+) ]]; then
-    echo "${BASH_REMATCH[1]}"
-  else
-    echo 9999
-  fi
+# 判断光标是否在任一显示器的顶边附近（相对该显示器 y 偏移）
+cursor_near_top() {
+  local threshold=$1
+  local pos cx cy
+  pos=$(hyprctl cursorpos 2>/dev/null) || return 1
+  [[ "$pos" =~ ([0-9]+),\ *([0-9]+) ]] || return 1
+  cx=${BASH_REMATCH[1]}; cy=${BASH_REMATCH[2]}
+
+  local tops
+  tops=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | "\(.x) \(.y) \(.width) \(.height)"') || return 1
+
+  while IFS=' ' read -r mx my mw mh; do
+    # 光标 x 在此显示器范围内，且 y 在顶边 threshold 像素内
+    if (( cx >= mx && cx < mx + mw && cy >= my && cy < my + threshold )); then
+      return 0
+    fi
+  done <<< "$tops"
+  return 1
 }
 
 toggle_pin() {
@@ -58,7 +67,7 @@ for _i in $(seq 1 30); do
   sleep 0.2
 done
 sleep 1.5
-bar_hide
+# 默认显示，不自动隐藏（用户按 Super+\ 可切换 pin）
 
 (
   socat -u "UNIX-CONNECT:${XDG_RUNTIME_DIR}/hypr/${HYPRLAND_INSTANCE_SIGNATURE}/.socket2.sock" - 2>/dev/null | while IFS= read -r event; do
@@ -72,7 +81,6 @@ while true; do
 
   [[ -f "$PINNED_FILE" ]] && continue
 
-  y=$(cursor_y)
   cur_state=$(<"$STATE_FILE")
 
   if [[ -f "$FLASH_FILE" ]]; then
@@ -81,14 +89,13 @@ while true; do
     sleep "$FLASH_SECS" &
     wait $!
     [[ -f "$PINNED_FILE" ]] && continue
-    y=$(cursor_y)
-    (( y <= BAR_PX )) || bar_hide
+    cursor_near_top "$BAR_PX" || bar_hide
     continue
   fi
 
   if [[ "$cur_state" == "visible" ]]; then
-    (( y <= BAR_PX )) || bar_hide
+    cursor_near_top "$BAR_PX" || bar_hide
   else
-    (( y <= EDGE_PX )) && bar_show
+    cursor_near_top "$EDGE_PX" && bar_show
   fi
 done

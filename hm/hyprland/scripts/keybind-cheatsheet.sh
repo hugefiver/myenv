@@ -1,146 +1,105 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/keybinds.conf"
-[[ -f "$CONF" ]] || { notify-send "Keybind Cheatsheet" "keybinds.conf not found"; exit 1; }
-
-declare -A raw=()
-declare -a order=()
-in_submap=""
-ws_mods="" move_ws_mods="" nav_mods="" move_mods=""
-
-trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"; echo "$s"; }
-
-fmt_mods() {
-  local m="$1"
-  m="${m//\$mod/S}"; m="${m//SUPER/S}"; m="${m//SHIFT/⇧}"
-  m="${m//CTRL/C}"; m="${m//ALT/A}"
-  m=$(echo "$m" | sed 's/  */ /g; s/^ //; s/ $//' | tr ' ' '+')
-  echo "$m"
+fmt() {
+  local key="$1" act="$2"
+  printf '<tt>  %-28s %s</tt>' "$key" "$act"
 }
 
-fmt_exec() {
-  local a="$1"
-  case "$a" in
-    *wezterm*)       echo "终端" ;;
-    *rofi*drun*)     echo "启动器" ;;
-    *rofi*window*)   echo "窗口列表" ;;
-    *emacsclient*monitors*) echo "编辑显示器" ;;
-    *emacsclient*)   echo "Emacs" ;;
-    *hyprlock*)      echo "锁屏" ;;
-    *wlogout*)       echo "电源菜单" ;;
-    *nm-connection*) echo "网络设置" ;;
-    *cliphist*)      echo "剪贴板" ;;
-    *grimblast*area*)    echo "截图(区域)" ;;
-    *grimblast*active*)  echo "截图(窗口)" ;;
-    *grimblast*screen*)  echo "截图(全屏)" ;;
-    *swappy*)        echo "截图+标注" ;;
-    *record-toggle*) echo "录屏" ;;
-    *keybind-cheatsheet*) echo "快捷键" ;;
-    *dolphin*)       echo "文件管理" ;;
-    *hyprctl*reload*) echo "重载配置" ;;
-    *suspend*)       echo "休眠" ;;
-    *) echo "$a" | sed 's|^~/.config/hypr/scripts/||; s| .*||; s|.*/||' ;;
-  esac
+hdr() {
+  printf '<b><span size="x-large">%s</span></b>' "$1"
 }
 
-add() {
-  local k="$1" v="$2"
-  if [[ -z "${raw[$k]+x}" ]]; then
-    order+=("$k")
-  fi
-  raw["$k"]="$v"
+{
+hdr "窗口管理"
+fmt "&lt;Super&gt; Return"             "终端"
+fmt "&lt;Super&gt; K"                  "关闭窗口"
+fmt "&lt;Super&gt; V"                  "浮动切换"
+fmt "&lt;Super&gt; T"                  "切换分割方向"
+fmt "&lt;Super&gt; Tab / Shift+Tab"    "下/上一窗口"
+fmt "&lt;Super&gt; B / F / P / N"      "焦点 左/右/上/下"
+fmt "&lt;Super+Shift&gt; B/F/P/N"      "移窗 左/右/上/下"
+fmt "&lt;Super&gt; + 鼠标左键拖动"     "移动窗口"
+fmt "&lt;Super&gt; + 鼠标右键拖动"     "调整大小"
+echo ""
+hdr "分组（标签页）"
+fmt "&lt;Super&gt; G"                  "创建/解散分组"
+fmt "&lt;Super&gt; . / ,"              "下/上一标签"
+fmt "&lt;Super+Shift&gt; G"            "移出分组"
+echo ""
+hdr "工作区"
+fmt "&lt;Super&gt; 1~9"                "切换工作区"
+fmt "&lt;Super+Shift&gt; 1~9"          "移窗到工作区"
+fmt "&lt;Super&gt; A / E"              "上/下一工作区"
+fmt "&lt;Super+Shift&gt; A / E"        "移到上/下一区"
+fmt "&lt;Super&gt; S"                  "特殊工作区"
+fmt "&lt;Super+Shift&gt; S"            "移到特殊工作区"
+echo ""
+hdr "启动器"
+fmt "&lt;Super&gt; Space"              "应用启动器"
+fmt "&lt;Super+Shift&gt; Space"        "窗口列表"
+fmt "&lt;Super&gt; I"                  "Emacs"
+fmt "&lt;Super&gt; M"                  "文件管理器"
+fmt "&lt;Super&gt; C"                  "剪贴板历史"
+echo ""
+hdr "截屏 / 录屏"
+fmt "Print"                          "截图（区域选取）"
+fmt "Shift + Print"                  "截图（当前窗口）"
+fmt "&lt;Super&gt; Print"              "截图（全屏）"
+fmt "Ctrl + Print"                   "截图 + 标注编辑"
+fmt "&lt;Super&gt; R"                  "录屏开关"
+echo ""
+hdr "系统"
+fmt "&lt;Super&gt; L"                  "锁屏"
+fmt "&lt;Super+Shift&gt; Q"            "电源菜单"
+fmt "&lt;Super+Shift&gt; K"            "退出 Hyprland"
+fmt "&lt;Super+Shift&gt; W"            "网络设置"
+fmt "&lt;Super&gt; \\"                 "顶栏显隐"
+fmt "&lt;Super&gt; /"                  "本速查表"
+echo ""
+hdr "前缀键  &lt;Super&gt; X → ..."
+fmt "B 窗口列表    D 启动器"         "I Emacs"
+fmt "F 文件管理    K 关闭"           "L 锁屏"
+fmt "N 网络设置    C 剪贴板"         "H 快捷键"
+fmt "P 电源菜单    R 重载配置"       "S 休眠"
+} | rofi -dmenu -markup-rows -i -p "" -no-custom \
+  -theme-str '
+* {
+  bg: rgba(30, 27, 24, 0.92);
+  fg: #e6ddd4;
+  accent: #dba86b;
+  font: "Noto Sans 12";
 }
-
-while IFS= read -r line; do
-  line="$(trim "$line")"
-  [[ -z "$line" || "$line" =~ ^# || "$line" =~ ^\$ ]] && continue
-
-  if [[ "$line" =~ ^submap\ *=\ *(.+) ]]; then
-    sub="$(trim "${BASH_REMATCH[1]}")"
-    [[ "$sub" == "reset" ]] && in_submap="" || in_submap="$sub"
-    continue
-  fi
-
-  [[ "$line" =~ ^bind[eld]*\ *=\ *(.+) ]] || continue
-  IFS=',' read -r mods key dispatcher args <<< "${BASH_REMATCH[1]}"
-  mods="$(trim "$mods")"; key="$(trim "$key")"
-  dispatcher="$(trim "$dispatcher")"; args="$(trim "$args")"
-  [[ "$key" == "catchall" ]] && continue
-
-  local_mods="$(fmt_mods "$mods")"
-  prefix=""
-  [[ -n "$in_submap" ]] && prefix="[X] "
-
-  if [[ -z "$in_submap" && "$dispatcher" == "workspace" && "$key" =~ ^[0-9]$ ]]; then
-    ws_mods="$local_mods"
-    continue
-  fi
-  if [[ -z "$in_submap" && "$dispatcher" == "movetoworkspace" && "$key" =~ ^[0-9]$ ]]; then
-    move_ws_mods="$local_mods"
-    continue
-  fi
-  if [[ -z "$in_submap" && "$dispatcher" == "movefocus" ]]; then
-    nav_mods="$local_mods"
-    continue
-  fi
-  if [[ -z "$in_submap" && "$dispatcher" == "movewindow" ]]; then
-    move_mods="$local_mods"
-    continue
-  fi
-
-  if [[ -n "$local_mods" ]]; then
-    combo="${prefix}${local_mods}+${key}"
-  else
-    combo="${prefix}${key}"
-  fi
-
-  case "$dispatcher" in
-    exec)                   act="$(fmt_exec "$args")" ;;
-    killactive)             act="关闭窗口" ;;
-    exit)                   act="退出" ;;
-    togglefloating)         act="浮动" ;;
-    togglesplit)            act="切换分割" ;;
-    cyclenext)              [[ "$args" == *prev* ]] && act="上一窗口" || act="下一窗口" ;;
-    workspace)
-      case "$args" in
-        e-1) act="上一工作区" ;; e+1) act="下一工作区" ;; *) act="工作区$args" ;;
-      esac ;;
-    movetoworkspace)
-      case "$args" in
-        e-1) act="移到上一区" ;; e+1) act="移到下一区" ;;
-        special:*) act="移到特殊区" ;; *) act="移到工作区$args" ;;
-      esac ;;
-    togglespecialworkspace) act="特殊工作区" ;;
-    submap)
-      [[ "$args" == "reset" ]] && act="退出子图" || act="前缀键" ;;
-    *) act="$dispatcher $args" ;;
-  esac
-
-  add "$combo" "$act"
-done < "$CONF"
-
-[[ -n "$nav_mods" ]]     && add "${nav_mods}+B/F/P/N" "焦点 ←→↑↓"
-[[ -n "$move_mods" ]]    && add "${move_mods}+B/F/P/N" "移窗 ←→↑↓"
-[[ -n "$ws_mods" ]]      && add "${ws_mods}+1~9" "切换工作区"
-[[ -n "$move_ws_mods" ]] && add "${move_ws_mods}+1~9" "移到工作区"
-
-lines=()
-for k in "${order[@]}"; do
-  lines+=("${k}  ${raw[$k]}")
-done
-
-n=${#lines[@]}
-half=$(( (n + 1) / 2 ))
-
-output=""
-for ((i=0; i<half; i++)); do
-  left="${lines[$i]}"
-  j=$((i + half))
-  right=""
-  (( j < n )) && right="${lines[$j]}"
-  output+="$(printf '%-28s│ %s' "$left" "$right")"$'\n'
-done
-
-echo -n "$output" | rofi -dmenu -i -p "⌨" -no-custom \
-  -theme-str 'window {width: 52%;} listview {lines: '"$half"'; spacing: 0px; fixed-height: false;} element {padding: 2px 6px;} element-text {font: "CaskaydiaCove Nerd Font Mono 10";}'
+window {
+  width: 52%;
+  border: 1px solid rgba(219,175,110,0.12);
+  border-radius: 16px;
+  background-color: @bg;
+}
+mainbox {
+  background-color: transparent;
+  padding: 24px 28px;
+}
+inputbar { enabled: false; }
+listview {
+  lines: 40;
+  columns: 1;
+  scrollbar: false;
+  fixed-height: false;
+  background-color: transparent;
+  spacing: 1;
+}
+element {
+  padding: 4px 12px;
+  background-color: transparent;
+  text-color: @fg;
+}
+element selected {
+  background-color: rgba(219,168,107,0.12);
+  border-radius: 8px;
+}
+element-text {
+  text-color: inherit;
+  highlight: none;
+}
+'
