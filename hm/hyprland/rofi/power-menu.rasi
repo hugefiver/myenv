@@ -1,12 +1,13 @@
+@theme "/dev/null"
+
 * {
-  bg: rgba(30, 27, 24, 0.92);
-  bg-alt: rgba(219, 175, 110, 0.06);
+  bg: rgba(30, 27, 24, 0.95);
   fg: #e6ddd4;
-  muted: #968b80;
-  border: rgba(219, 175, 110, 0.10);
   selected: rgba(219, 168, 107, 0.18);
   selected-border: rgba(219, 168, 107, 0.4);
-  accent: #dba86b;
+  border-clr: rgba(219, 175, 110, 0.10);
+  background-color: transparent;
+  text-color: @fg;
   font: "Noto Sans 12";
 }
 
@@ -23,7 +24,7 @@ window {
   y-offset: 36;
   width: 160px;
   border: 1px;
-  border-color: @border;
+  border-color: @border-clr;
   border-radius: 12px;
   background-color: @bg;
 }
@@ -31,7 +32,6 @@ window {
 mainbox {
   spacing: 0;
   padding: 6px;
-  background-color: transparent;
   children: [ listview ];
 }
 
@@ -51,16 +51,12 @@ listview {
 element {
   padding: 8px 12px;
   border-radius: 8px;
-  border: 0;
-  background-color: transparent;
-  text-color: @fg;
 }
 
 element selected {
   background-color: @selected;
   border: 1px;
   border-color: @selected-border;
-  text-color: @fg;
 }
 
 element-text {

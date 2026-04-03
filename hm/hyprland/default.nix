@@ -20,6 +20,7 @@
     slurp
     socat
     swappy             # 截图标注编辑器
+    swayimg
     swww
     waybar
     wf-recorder        # 轻量 Wayland 录屏，支持 slurp 区域选择
