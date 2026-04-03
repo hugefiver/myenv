@@ -1,3 +1,4 @@
+[
 {
   "layer": "top",
   "position": "top",
@@ -22,8 +23,7 @@
     "all-outputs": false,
     "format": "{name}",
     "persistent-workspaces": {
-      "desc:Dell Inc. DELL U2720QM 60PZCH3": [1, 2, 3, 4, 5],
-      "desc:Dell Inc. DELL U2720QM FCV0DH3": [6, 7, 8, 9, 10]
+      "desc:Dell Inc. DELL U2720QM 60PZCH3": [1, 2, 3, 4, 5]
     }
   },
 
@@ -121,4 +121,27 @@
     "tooltip": false,
     "on-click": "pkill wlogout || wlogout"
   }
+},
+{
+  "layer": "top",
+  "position": "top",
+  "output": "DVI-I-2",
+  "height": 26,
+  "margin-top": 6,
+  "margin-left": 8,
+  "margin-right": 8,
+  "spacing": 4,
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": [],
+  "modules-right": [],
+
+  "hyprland/workspaces": {
+    "disable-scroll": false,
+    "all-outputs": false,
+    "format": "{name}",
+    "persistent-workspaces": {
+      "desc:Dell Inc. DELL U2720QM FCV0DH3": [6, 7, 8, 9, 10]
+    }
+  }
 }
+]

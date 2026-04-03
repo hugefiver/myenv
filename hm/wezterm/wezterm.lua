@@ -10,7 +10,7 @@ return {
   color_scheme = "Kanagawa (Gogh)",
   default_prog = { "zsh", "-l" },
   adjust_window_size_when_changing_font_size = false,
-  window_background_opacity = 0.82,
+  window_background_opacity = 0.75,
   enable_tab_bar = true,
   hide_tab_bar_if_only_one_tab = true,
   use_fancy_tab_bar = false,

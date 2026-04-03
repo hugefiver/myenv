@@ -57,11 +57,11 @@ in {
       DefaultIM=rime
 
       [Groups/0/Items/0]
-      Name=keyboard-us
+      Name=rime
       Layout=
 
       [Groups/0/Items/1]
-      Name=rime
+      Name=keyboard-us
       Layout=
 
       [GroupOrder]
