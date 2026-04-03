@@ -72,41 +72,117 @@
 
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
+    dirname = "${pkgs.coreutils}/bin/dirname";
+    basename = "${pkgs.coreutils}/bin/basename";
+    grep = "${pkgs.gnugrep}/bin/grep";
+    od = "${pkgs.coreutils}/bin/od";
+    mkfifo = "${pkgs.coreutils}/bin/mkfifo";
+    rm = "${pkgs.coreutils}/bin/rm";
+    udevadm = "${pkgs.systemd}/bin/udevadm";
+    pgrep = "${pkgs.procps}/bin/pgrep";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
+    _FIFO="/tmp/sddm-drm-monitor"
 
-    # ── 通过 EDID 序列号找到横屏(60PZCH3)所在的 DRM card ──
-    _find_landscape_card() {
-      for _edid in /sys/class/drm/card*-*/edid; do
-        [ -f "$_edid" ] || continue
-        if ${pkgs.coreutils}/bin/strings "$_edid" 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q "60PZCH3"; then
-          _dir=$(${pkgs.coreutils}/bin/dirname "$_edid")
-          _conn=$(${pkgs.coreutils}/bin/basename "$_dir")
-          echo "''${_conn%%-*}"
+    # ── EDID preferred timing 分辨率检测：原生宽 > 高 = 横屏 ──
+    _is_landscape() {
+      [ -s "$1" ] || return 1
+      local _hlo _hhi _vlo _vhi
+      _hlo=$(${od} -A n -t u1 -j 56 -N 1 "$1" 2>/dev/null)
+      _hhi=$(${od} -A n -t u1 -j 58 -N 1 "$1" 2>/dev/null)
+      _vlo=$(${od} -A n -t u1 -j 59 -N 1 "$1" 2>/dev/null)
+      _vhi=$(${od} -A n -t u1 -j 61 -N 1 "$1" 2>/dev/null)
+      local _w=$(( ((''${_hhi:-0} >> 4 & 0x0F) << 8) | ''${_hlo:-0} ))
+      local _h=$(( ((''${_vhi:-0} >> 4 & 0x0F) << 8) | ''${_vlo:-0} ))
+      [ "$_w" -gt "$_h" ]
+    }
+
+    # ── 查找最佳显示卡（所有卡同等对待，只看 connected 状态） ──
+    # 优先级：1) 已知序列号  2) 横屏  3) 竖屏
+    _find_best_card() {
+      local _dir _conn _card _st _v _edid
+      local _first_landscape="" _first_portrait=""
+
+      for _st in /sys/class/drm/card*-*/status; do
+        [ -f "$_st" ] || continue
+        read -r _v < "$_st" 2>/dev/null
+        [ "$_v" = "connected" ] || continue
+        _dir=$(${dirname} "$_st")
+        _conn=$(${basename} "$_dir")
+        _card="''${_conn%%-*}"
+        _edid="$_dir/edid"
+
+        # 1) 已知序列号直接返回
+        if [ -s "$_edid" ] && ${grep} -qa "60PZCH3" "$_edid" 2>/dev/null; then
+          echo "$_card"
           return 0
         fi
+
+        # 2) 横屏  3) 竖屏
+        if [ -z "$_first_landscape" ] && _is_landscape "$_edid"; then
+          _first_landscape="$_card"
+        elif [ -z "$_first_portrait" ]; then
+          _first_portrait="$_card"
+        fi
       done
+
+      [ -n "$_first_landscape" ] && { echo "$_first_landscape"; return 0; }
+      [ -n "$_first_portrait" ] && { echo "$_first_portrait"; return 0; }
       return 1
     }
 
-    # 等待 DisplayLink/evdi 初始化（最多 30s）
-    _card=""
-    for _i in $(seq 1 30); do
-      _card=$(_find_landscape_card) && break
-      sleep 1
-    done
+    # ── 1. 即时检测 ──
+    _card=$(_find_best_card)
 
-    if [ -n "$_card" ]; then
-      _dev="/dev/dri/$_card"
-      if [ -e /dev/dri/intel-igpu ]; then
-        _igpu=$(${pkgs.coreutils}/bin/readlink -f /dev/dri/intel-igpu)
-        export KWIN_DRM_DEVICES="$_igpu:$_dev"
-      else
-        export KWIN_DRM_DEVICES="$_dev"
-      fi
+    # ── 2. 无显示设备 → 事件驱动等待（非轮询） ──
+    if [ -z "$_card" ]; then
+      while IFS= read -r _; do
+        sleep 1
+        while IFS= read -r -t 0.5 _; do :; done
+        _card=$(_find_best_card)
+        [ -n "$_card" ] && break
+      done < <(${udevadm} monitor -s drm -u)
     fi
 
-    exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
+    # ── 3. KWIN_DRM_DEVICES：目标卡 + iGPU（提供 render node） ──
+    if [ "$_card" != "card0" ] && [ -e /dev/dri/card0 ]; then
+      export KWIN_DRM_DEVICES="/dev/dri/card0:/dev/dri/$_card"
+    else
+      export KWIN_DRM_DEVICES="/dev/dri/$_card"
+    fi
+
+    # ── 4. kwin（后台子进程，主进程保留控制权） ──
+    ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard &
+    _KWIN_PID=$!
+
+    # ── 5. DRM 设备变更监听 ──
+    ${rm} -f "$_FIFO"
+    ${mkfifo} "$_FIFO"
+    ${udevadm} monitor -s drm -u > "$_FIFO" 2>/dev/null &
+    _UDEV_PID=$!
+
+    _cleanup() { kill "$_KWIN_PID" "$_UDEV_PID" 2>/dev/null; ${rm} -f "$_FIFO"; }
+    trap '_cleanup; wait "$_KWIN_PID" 2>/dev/null; exit' TERM INT HUP
+
+    _CUR="$_card"
+    while true; do
+      if ! IFS= read -r -t 5 _; then
+        kill -0 "$_KWIN_PID" 2>/dev/null || break
+        continue
+      fi
+      # DRM 事件 → 防抖 2s
+      sleep 2
+      while IFS= read -r -t 0.5 _; do :; done
+      kill -0 "$_KWIN_PID" 2>/dev/null || break
+      _new=$(_find_best_card)
+      if [ "''${_new:-}" != "$_CUR" ]; then
+        ${pgrep} -x sddm-greeter-qt6 >/dev/null 2>&1 && kill "$_KWIN_PID"
+        break
+      fi
+    done < "$_FIFO"
+
+    _cleanup
+    wait "$_KWIN_PID" 2>/dev/null
   '');
 
   nixpkgs.overlays = [
