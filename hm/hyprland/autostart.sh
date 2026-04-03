@@ -34,8 +34,7 @@ fi
 # 视频壁纸优先，回退到静态图片
 _video="$HOME/Pictures/wallpapers/CH0273_home_260331013216_15f994_60.mp4"
 if [ -f "$_video" ]; then
-  pkill mpvpaper 2>/dev/null || true
-  mpvpaper -fvs -o "no-audio loop panscan=1.0" '*' "$_video" >/dev/null 2>&1 &
+  ~/.config/hypr/scripts/video-wallpaper.sh "$_video" DVI-I-1 &
 else
   for wallpaper in \
     "$HOME/Pictures/Wallpapers/default.png" \

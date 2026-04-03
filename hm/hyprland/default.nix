@@ -3,6 +3,7 @@
     brightnessctl
     cliphist
     dunst
+    ffmpeg
     grim
     grimblast          # grim+slurp wrapper：区域/窗口/全屏截图一条命令搞定
     hypridle
@@ -66,6 +67,10 @@
   };
   xdg.configFile."hypr/scripts/popup-dismiss.sh" = {
     source = ./scripts/popup-dismiss.sh;
+    executable = true;
+  };
+  xdg.configFile."hypr/scripts/video-wallpaper.sh" = {
+    source = ./scripts/video-wallpaper.sh;
     executable = true;
   };
   xdg.configFile."hypr/base.conf".source = ./config.txt;
