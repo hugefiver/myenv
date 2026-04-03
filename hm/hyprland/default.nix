@@ -90,6 +90,12 @@
   xdg.configFile."dunst/dunstrc".source = ./dunst/dunstrc;
   xdg.configFile."rofi/config.rasi".source = ./rofi/config.rasi;
   xdg.configFile."rofi/power-menu.rasi".source = ./rofi/power-menu.rasi;
+  xdg.configFile."swayimg/config".text = ''
+    [info]
+    show = no
+    [viewer]
+    scale = fit
+  '';
   xdg.configFile."waybar/config".source = ./waybar/config;
   xdg.configFile."waybar/style.css".source = ./waybar/style.css;
 }
