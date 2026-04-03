@@ -38,6 +38,7 @@ launch_drun() {
 
   rofi -show drun -show-icons \
     -drun-run-command "echo {cmd} > $CMD_FILE" \
+    -kb-accept-custom '' \
     -kb-custom-1 'Control+Return' \
     -kb-custom-2 'Shift+Return'
   local rc=$?
