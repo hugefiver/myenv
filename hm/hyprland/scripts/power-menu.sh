@@ -8,7 +8,7 @@ fi
 
 entries="󰌾  锁屏\n󰍃  注销\n󰒲  休眠\n󰜉  重启\n󰐥  关机"
 
-chosen=$(echo -e "$entries" | rofi -dmenu -theme ~/.config/rofi/power-menu.rasi -p "")
+chosen=$(echo -e "$entries" | rofi -dmenu -no-config -theme ~/.config/rofi/power-menu.rasi -p "")
 
 case "$chosen" in
   *锁屏*) hyprlock ;;
