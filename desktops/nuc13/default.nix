@@ -74,22 +74,69 @@
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
 
+    # ── 尝试限制 kwin 只用 iGPU 直连输出 ──
+    if [ -e /dev/dri/intel-igpu ]; then
+      _igpu=$(readlink -f /dev/dri/intel-igpu)
+      # 检查 iGPU 是否有连接的输出（status=connected）
+      _card_name="''${_igpu##*/}"
+      _has_conn=0
+      for _s in /sys/class/drm/"$_card_name"-*/status; do
+        [ -f "$_s" ] && [ "$(cat "$_s")" = "connected" ] && _has_conn=1 && break
+      done
+      if [ "$_has_conn" = "1" ]; then
+        export KWIN_DRM_DEVICES="$_igpu"
+        exec ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard
+      fi
+    fi
+
+    # ── iGPU 无输出，使用所有 DRM 设备，登录后选择最佳单输出 ──
     ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard &
     _PID=$!
 
     (
-      sleep 4
-      _first=""
+      # 等待至少 1 个输出出现
+      for _i in $(seq 1 15); do
+        _cnt=$(${kscreenDoctor} -o 2>/dev/null | grep -c "^Output:" || true)
+        [ "$_cnt" -ge 1 ] && break
+        sleep 1
+      done
+      sleep 2
+
+      # 解析所有输出，按优先级选择：横屏 > 第一竖屏
+      _keep="" _first=""
+      _id="" _w=0 _h=0
+      _eval_output() {
+        [ -z "$_id" ] && return
+        [ -z "$_first" ] && _first="$_id"
+        # 横屏（w >= h）优先
+        if [ -z "$_keep" ] && [ "$_w" -ge "$_h" ] && [ "$_w" -gt 0 ]; then
+          _keep="$_id"
+        fi
+      }
+      while IFS= read -r _line; do
+        case "$_line" in
+          Output:*)
+            _eval_output
+            set -- $_line; _id="$2"; _w=0; _h=0
+            ;;
+          *Geometry:*)
+            _res="''${_line##* }"
+            _w="''${_res%%x*}"
+            _h="''${_res##*x}"
+            ;;
+        esac
+      done < <(${kscreenDoctor} -o 2>/dev/null)
+      _eval_output
+
+      # 没找到横屏就回退到第一个输出
+      [ -z "$_keep" ] && _keep="$_first"
+
+      # 禁用所有非 _keep 的输出
       while IFS= read -r _line; do
         case "$_line" in
           Output:*)
             set -- $_line
-            _id="$2"
-            if [ -z "$_first" ]; then
-              _first="$_id"
-            else
-              ${kscreenDoctor} output."$_id".disable 2>/dev/null || true
-            fi
+            [ "$2" != "$_keep" ] && ${kscreenDoctor} output."$2".disable 2>/dev/null || true
             ;;
         esac
       done < <(${kscreenDoctor} -o 2>/dev/null)

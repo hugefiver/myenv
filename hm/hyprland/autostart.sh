@@ -31,18 +31,25 @@ if ! pgrep -x swww-daemon >/dev/null 2>&1; then
   sleep 0.4
 fi
 
-for wallpaper in \
-  "$HOME/Pictures/Wallpapers/default.png" \
-  "$HOME/Pictures/Wallpapers/default.jpg" \
-  "$HOME/Pictures/Wallpapers/default.jpeg"; do
-  if [ -f "$wallpaper" ]; then
-    swww img "$wallpaper" \
-      --transition-type grow \
-      --transition-pos center \
-      --transition-duration 1.1 >/dev/null 2>&1 || true
-    break
-  fi
-done
+# 视频壁纸优先，回退到静态图片
+_video="$HOME/Pictures/wallpapers/CH0273_home_260331013216_15f994_60.mp4"
+if [ -f "$_video" ]; then
+  pkill mpvpaper 2>/dev/null || true
+  mpvpaper -fvs -o "no-audio loop panscan=1.0" '*' "$_video" >/dev/null 2>&1 &
+else
+  for wallpaper in \
+    "$HOME/Pictures/Wallpapers/default.png" \
+    "$HOME/Pictures/Wallpapers/default.jpg" \
+    "$HOME/Pictures/Wallpapers/default.jpeg"; do
+    if [ -f "$wallpaper" ]; then
+      swww img "$wallpaper" \
+        --transition-type grow \
+        --transition-pos center \
+        --transition-duration 1.1 >/dev/null 2>&1 || true
+      break
+    fi
+  done
+fi
 
 if ! pgrep -af 'wl-paste --type text --watch cliphist store' >/dev/null 2>&1; then
   wl-paste --type text --watch cliphist store >/dev/null 2>&1 &
@@ -58,16 +65,17 @@ fi
   sleep 0.5
   hyprctl reload
   sleep 0.5
-  # 重新为所有输出设壁纸（新检测到的显示器没有壁纸）
-  for wallpaper in \
-    "$HOME/Pictures/Wallpapers/default.png" \
-    "$HOME/Pictures/Wallpapers/default.jpg" \
-    "$HOME/Pictures/Wallpapers/default.jpeg"; do
-    if [ -f "$wallpaper" ]; then
-      swww img "$wallpaper" --transition-type none 2>/dev/null || true
-      break
-    fi
-  done
+  if ! pgrep -x mpvpaper >/dev/null 2>&1; then
+    for wallpaper in \
+      "$HOME/Pictures/Wallpapers/default.png" \
+      "$HOME/Pictures/Wallpapers/default.jpg" \
+      "$HOME/Pictures/Wallpapers/default.jpeg"; do
+      if [ -f "$wallpaper" ]; then
+        swww img "$wallpaper" --transition-type none 2>/dev/null || true
+        break
+      fi
+    done
+  fi
 ) >/dev/null 2>&1 &
 
 run_once 'waybar-autohide' ~/.config/hypr/scripts/waybar-autohide.sh

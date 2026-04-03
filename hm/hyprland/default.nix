@@ -11,6 +11,7 @@
     jq
     kdePackages.kwallet  # Hyprland 会话也用 kwallet 做 Secret Service
     libnotify
+    mpvpaper
     networkmanagerapplet # nm-connection-editor：图形化编辑 WiFi/VPN 配置
     pavucontrol
     playerctl

@@ -67,7 +67,8 @@ for _i in $(seq 1 30); do
   sleep 0.2
 done
 sleep 1.5
-# 默认显示，不自动隐藏（用户按 Super+\ 可切换 pin）
+# 默认 pinned（始终显示），用户按 Super+\ 可切换自动隐藏
+touch "$PINNED_FILE"
 
 (
   socat -u "UNIX-CONNECT:${XDG_RUNTIME_DIR}/hypr/${HYPRLAND_INSTANCE_SIGNATURE}/.socket2.sock" - 2>/dev/null | while IFS= read -r event; do
