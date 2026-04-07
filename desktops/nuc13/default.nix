@@ -85,9 +85,18 @@
     pgrep = "${pkgs.procps}/bin/pgrep";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
-    _FIFO="/tmp/sddm-drm-monitor"
+    _FIFO="/tmp/sddm-drm-monitor.$$"
+    _log() { echo "[sddm-compositor] $*" >&2; }
 
     # ── EDID preferred timing 分辨率检测：原生宽 > 高 = 横屏 ──
+    # EDID 第一个 Detailed Timing Descriptor 起始于 byte 54（共 18 字节）：
+    #   byte 54-55: pixel clock
+    #   byte 56:    H active pixels [7:0]
+    #   byte 57:    H blanking [7:0]
+    #   byte 58:    H active [11:8] (高 4 位) | H blanking [11:8] (低 4 位)
+    #   byte 59:    V active lines [7:0]
+    #   byte 60:    V blanking [7:0]
+    #   byte 61:    V active [11:8] (高 4 位) | V blanking [11:8] (低 4 位)
     _is_landscape() {
       [ -s "$1" ] || return 1
       local _hlo _hhi _vlo _vhi
@@ -117,6 +126,7 @@
 
         # 1) 已知序列号直接返回
         if [ -s "$_edid" ] && ${grep} -qa "60PZCH3" "$_edid" 2>/dev/null; then
+          _log "selected $_card ($_conn): matched serial 60PZCH3"
           echo "$_card"
           return 0
         fi
@@ -129,8 +139,15 @@
         fi
       done
 
-      [ -n "$_first_landscape" ] && { echo "$_first_landscape"; return 0; }
-      [ -n "$_first_portrait" ] && { echo "$_first_portrait"; return 0; }
+      if [ -n "$_first_landscape" ]; then
+        _log "selected $_first_landscape: first landscape display"
+        echo "$_first_landscape"; return 0
+      fi
+      if [ -n "$_first_portrait" ]; then
+        _log "selected $_first_portrait: first portrait display (no landscape found)"
+        echo "$_first_portrait"; return 0
+      fi
+      _log "no connected display found"
       return 1
     }
 
@@ -139,6 +156,7 @@
 
     # ── 2. 无显示设备 → 事件驱动等待（非轮询） ──
     if [ -z "$_card" ]; then
+      _log "waiting for DRM device (event-driven)..."
       while IFS= read -r _; do
         sleep 1
         while IFS= read -r -t 0.5 _; do :; done
@@ -147,12 +165,16 @@
       done < <(${udevadm} monitor -s drm -u)
     fi
 
-    # ── 3. KWIN_DRM_DEVICES：目标卡 + iGPU（提供 render node） ──
-    if [ "$_card" != "card0" ] && [ -e /dev/dri/card0 ]; then
+    # 兜底：事件流异常退出仍未找到设备 → 不设 KWIN_DRM_DEVICES，让 kwin 自行探测
+    if [ -z "$_card" ]; then
+      _log "WARNING: no display found after event wait, letting kwin auto-detect"
+    # ── 3. KWIN_DRM_DEVICES：目标卡 + iGPU（提供 render node，evdi 无 renderD*） ──
+    elif [ "$_card" != "card0" ] && [ -e /dev/dri/card0 ]; then
       export KWIN_DRM_DEVICES="/dev/dri/card0:/dev/dri/$_card"
     else
       export KWIN_DRM_DEVICES="/dev/dri/$_card"
     fi
+    _log "KWIN_DRM_DEVICES=''${KWIN_DRM_DEVICES:-<auto>}"
 
     # ── 4. kwin（后台子进程，主进程保留控制权） ──
     ${kwin} --drm --no-lockscreen --no-global-shortcuts --inputmethod qtvirtualkeyboard &
@@ -171,6 +193,8 @@
     while true; do
       if ! IFS= read -r -t 5 _; then
         kill -0 "$_KWIN_PID" 2>/dev/null || break
+        # udevadm 进程也挂了 → 没法继续监听
+        kill -0 "$_UDEV_PID" 2>/dev/null || { _log "udevadm exited, stopping monitor"; break; }
         continue
       fi
       # DRM 事件 → 防抖 2s
@@ -179,6 +203,7 @@
       kill -0 "$_KWIN_PID" 2>/dev/null || break
       _new=$(_find_best_card)
       if [ "''${_new:-}" != "$_CUR" ]; then
+        _log "display changed: $_CUR -> ''${_new:-<none>}, restarting compositor"
         ${pgrep} -x sddm-greeter-qt6 >/dev/null 2>&1 && kill "$_KWIN_PID"
         break
       fi
