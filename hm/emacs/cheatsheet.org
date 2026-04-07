@@ -1,0 +1,392 @@
+#+TITLE: Emacs 快速上手指南
+#+AUTHOR: Hugefiver
+#+STARTUP: overview
+#+OPTIONS: toc:3 num:nil
+
+这份指南覆盖了你的 Emacs 配置中所有重要的快捷键和工作流。
+配置灵感来自 Doom Emacs，但使用 Nix 管理，更简洁可控。
+
+*提示*: 按 =TAB= 展开/折叠各章节。
+
+* 📌 速查：最常用快捷键
+
+| 快捷键           | 功能                     |
+|------------------+--------------------------|
+| =F5=             | 刷新当前 buffer          |
+| =F8=             | 打开/关闭文件树          |
+| =C-c e=          | 切换 Evil (Vim) 模式     |
+| =C-c o=          | 打开本指南               |
+| =C-c i=          | 打开 init.el             |
+| =C-s=            | 当前 buffer 搜索         |
+| =C-x b=          | 切换 buffer              |
+| =C-x g=          | 打开 Magit (Git)         |
+| =M-o=            | 切换窗口                 |
+| =M-j=            | Avy 跳转到字符           |
+| =C-.=            | Embark 上下文操作        |
+| =C-==            | 扩展选区                 |
+
+* 🔤 Emacs 基础概念
+
+** 按键表示法
+
+| 符号   | 含义                         |
+|--------+------------------------------|
+| =C-=   | Ctrl 键                      |
+| =M-=   | Alt (Meta) 键                |
+| =S-=   | Shift 键                     |
+| =SPC=  | 空格键 (Evil leader)         |
+| =RET=  | 回车键                       |
+| =DEL=  | 退格键                       |
+
+** 核心概念
+
+- *Buffer*: Emacs 中的文件/内容容器，一个 buffer 对应一个文件或临时内容
+- *Window*: 显示 buffer 的视口，一个 frame 里可以有多个 window
+- *Frame*: 操作系统窗口
+- *Minibuffer*: 底部的命令输入区域
+- *Mode*: 每个 buffer 有一个主模式 (major-mode) 和多个辅助模式 (minor-mode)
+
+* 📁 文件操作
+
+| 快捷键     | 功能                   |
+|------------+------------------------|
+| =C-x C-f=  | 打开文件               |
+| =C-x C-s=  | 保存文件               |
+| =C-x C-w=  | 另存为                 |
+| =C-x C-r=  | 只读打开               |
+| =M-s f=    | 项目内查找文件 (find)  |
+| =M-s r=    | 项目内搜索 (ripgrep)   |
+
+* 📋 Buffer 管理
+
+| 快捷键     | 功能                        |
+|------------+-----------------------------|
+| =C-x b=    | 切换 buffer (consult 增强)  |
+| =C-x k=    | 关闭当前 buffer             |
+| =C-x C-b=  | 列出所有 buffer             |
+| =M-y=      | 浏览剪贴板历史              |
+
+* 🪟 窗口管理
+
+| 快捷键         | 功能                     |
+|----------------+--------------------------|
+| =C-x 0=        | 关闭当前窗口             |
+| =C-x 1=        | 只保留当前窗口           |
+| =C-x 2=        | 上下分屏                 |
+| =C-x 3=        | 左右分屏                 |
+| =M-o=           | 跳转到其他窗口 (ace)     |
+| =C-x o=         | 循环切换窗口             |
+| =C-c <left>=    | 撤销窗口布局 (winner)    |
+| =C-c <right>=   | 重做窗口布局 (winner)    |
+
+* 🔍 搜索 & 跳转
+
+** Consult 搜索（核心）
+
+| 快捷键     | 功能                         |
+|------------+------------------------------|
+| =C-s=      | 当前 buffer 行搜索           |
+| =M-s r=    | 项目内 ripgrep 搜索          |
+| =M-s f=    | 项目内文件查找               |
+| =M-s l=    | 当前 buffer 行搜索           |
+| =M-g g=    | 跳到指定行号                 |
+| =M-g o=    | 跳到大纲标题                 |
+| =M-g i=    | 跳到符号 (imenu)             |
+
+** Avy 跳转
+
+| 快捷键     | 功能                     |
+|------------+--------------------------|
+| =M-j=      | 跳转到任意字符           |
+| =M-g l=    | 跳转到任意行             |
+| =M-g w=    | 跳转到任意单词           |
+
+** Embark 操作
+
+| 快捷键     | 功能                         |
+|------------+------------------------------|
+| =C-.=      | 对当前目标执行操作           |
+| =C-;=      | 对当前目标执行默认操作       |
+| =C-h B=    | 查看所有绑定                 |
+
+* ✏️ 编辑技巧
+
+** 基本编辑
+
+| 快捷键         | 功能                   |
+|----------------+------------------------|
+| =C-SPC=         | 开始选区               |
+| =C-w=           | 剪切选区               |
+| =M-w=           | 复制选区               |
+| =C-y=           | 粘贴                   |
+| =C-/=           | 撤销                   |
+| =C-?=           | 重做 (undo-tree)       |
+| =C-x u=         | 可视化撤销树           |
+
+** 增强编辑
+
+| 快捷键           | 功能                   |
+|------------------+------------------------|
+| =C-==            | 扩展选区               |
+| =C-> / C-<=      | 多光标选择下/上一个    |
+| =C-S-c C-S-c=    | 多光标编辑选中行       |
+| =C-c C-<=        | 选择所有相同文本       |
+
+* 🌳 文件树 (Treemacs)
+
+| 快捷键       | 功能                     |
+|--------------+--------------------------|
+| =F8=          | 打开/关闭 Treemacs       |
+| =C-x t t=     | 打开 Treemacs            |
+| =C-x t 1=     | 选择 Treemacs 窗口       |
+
+Treemacs 内操作：
+
+| 按键     | 功能                     |
+|----------+--------------------------|
+| =RET=    | 打开文件/展开目录        |
+| =TAB=    | 展开/折叠                |
+| =q=      | 退出                     |
+| =?=      | 查看帮助                 |
+| =cf=     | 创建文件                 |
+| =cd=     | 创建目录                 |
+| =R=      | 重命名                   |
+| =d=      | 删除                     |
+| =m=      | 移动                     |
+| =r=      | 刷新                     |
+
+* 🔀 Git (Magit)
+
+| 快捷键     | 功能                     |
+|------------+--------------------------|
+| =C-x g=    | 打开 Magit 状态          |
+
+Magit 内操作：
+
+| 按键     | 功能                         |
+|----------+------------------------------|
+| =s=      | Stage 文件/区块              |
+| =u=      | Unstage                      |
+| =c c=    | 开始 commit (写消息后 C-c C-c) |
+| =P p=    | Push                         |
+| =F p=    | Pull                         |
+| =b b=    | 切换分支                     |
+| =b c=    | 创建分支                     |
+| =l l=    | 查看日志                     |
+| =d d=    | 查看 diff                    |
+| =g=      | 刷新                         |
+| =q=      | 退出                         |
+| =?=      | 查看所有命令                 |
+
+Diff 边栏指示 (diff-hl)：
+
+- 绿色竖线 = 新增行
+- 橙色竖线 = 修改行
+- 红色三角 = 删除行
+
+* ⌨️ Evil 模式 (Vim 键位)
+
+*Evil 默认关闭*，按 =C-c e= 切换启用/关闭。
+
+启用后，你拥有完整的 Vim 编辑体验：
+
+** 模式说明
+
+| 模式       | 功能         | 进入方式     |
+|------------+--------------+--------------|
+| Normal     | 浏览/命令    | =ESC=        |
+| Insert     | 编辑文本     | =i= / =a=   |
+| Visual     | 选择文本     | =v= / =V=   |
+| Command    | Ex 命令      | =:=          |
+
+** Normal 模式基本操作
+
+| 按键         | 功能                   |
+|--------------+------------------------|
+| =h j k l=    | 左 下 上 右            |
+| =w / b=      | 按词前进/后退          |
+| =0 / $=      | 行首/行尾              |
+| =gg / G=     | 文件首/文件尾          |
+| =dd=         | 删除整行               |
+| =yy=         | 复制整行               |
+| =p=          | 粘贴                   |
+| =u=          | 撤销                   |
+| =C-r=        | 重做                   |
+| =/=          | 搜索                   |
+| =n / N=      | 下/上一个搜索结果      |
+| =.=          | 重复上一个操作         |
+
+** SPC Leader 键 (Evil Normal 模式)
+
+启用 Evil 后，=SPC= 成为 leader 键：
+
+| 按键           | 功能                     |
+|----------------+--------------------------|
+| =SPC f f=      | 查找文件                 |
+| =SPC f r=      | 最近文件                 |
+| =SPC f b=      | 切换 buffer              |
+| =SPC f g=      | Ripgrep 搜索             |
+| =SPC f l=      | 行搜索                   |
+| =SPC b b=      | Buffer 列表              |
+| =SPC b d=      | 关闭 buffer              |
+| =SPC w w=      | 切换窗口                 |
+| =SPC w d=      | 关闭窗口                 |
+| =SPC w s=      | 上下分屏                 |
+| =SPC w v=      | 左右分屏                 |
+| =SPC g g=      | Magit 状态               |
+| =SPC t t=      | 文件树                   |
+| =SPC t v=      | 终端 (vterm)             |
+| =SPC p p=      | 切换项目                 |
+| =SPC p f=      | 项目内查找文件           |
+| =SPC h h=      | 打开本指南               |
+
+** Surround 操作 (evil-surround)
+
+| 按键             | 功能                           |
+|------------------+--------------------------------|
+| =y s <motion> "= | 用引号包围                     |
+| =c s " '=        | 把双引号改成单引号             |
+| =d s "=          | 删除包围的引号                 |
+| =S "= (Visual)   | 选区包围引号                   |
+
+** Commentary 注释 (evil-commentary)
+
+| 按键         | 功能                   |
+|--------------+------------------------|
+| =g c c=      | 注释/取消注释当前行    |
+| =g c <motion>= | 注释/取消注释区域    |
+
+* 💻 编程
+
+** Eglot (LSP)
+
+LSP 对支持的语言自动启用 (Nix, Python, JS/TS, Rust, Go, C/C++)。
+需要在系统中安装对应的 language server：
+
+| 语言     | 需要安装             |
+|----------+----------------------|
+| Nix      | =nil= 或 =nixd=     |
+| Python   | =pyright= / =pylsp=  |
+| TS/JS    | =typescript-language-server= |
+| Rust     | =rust-analyzer=      |
+| Go       | =gopls=              |
+| C/C++    | =clangd=             |
+
+Eglot 快捷键 (LSP 模式下)：
+
+| 快捷键           | 功能                   |
+|------------------+------------------------|
+| =M-.=             | 跳转到定义             |
+| =M-,=             | 跳回                   |
+| =M-?=             | 查找引用               |
+| =C-c C-r=         | 重命名                 |
+| =C-c C-a=         | 代码操作               |
+| =C-h .=           | 查看文档               |
+| =M-n / M-p=       | 跳到下/上一个错误      |
+
+** Tree-sitter
+
+自动启用 tree-sitter 高亮（需要 Nix 安装的语法树）。
+配置中已设置 =treesit-font-lock-level= 为 4（最详细高亮）。
+
+已映射的 tree-sitter 模式：Python, JS, TS, JSON, YAML, CSS,
+Bash, C, C++, CMake, TOML, Rust, Go.
+
+** Flymake (语法检查)
+
+| 快捷键     | 功能                     |
+|------------+--------------------------|
+| =M-n=      | 跳到下一个错误           |
+| =M-p=      | 跳到上一个错误           |
+
+* 📝 Org 模式
+
+| 快捷键           | 功能                   |
+|------------------+------------------------|
+| =TAB=             | 折叠/展开当前标题      |
+| =S-TAB=           | 全局折叠/展开          |
+| =M-RET=           | 插入同级标题           |
+| =M-<left/right>=  | 升/降标题级别          |
+| =C-c C-t=         | 切换 TODO 状态         |
+| =C-c C-s=         | 设置日程               |
+| =C-c C-d=         | 设置截止日期           |
+| =C-c C-c=         | 执行代码块 / 切换复选框 |
+| =C-c C-l=         | 插入链接               |
+| =C-c C-o=         | 打开链接               |
+| =C-c '=           | 编辑代码块             |
+
+* 🖥️ 终端 (VTerm)
+
+| 快捷键       | 功能                   |
+|--------------+------------------------|
+| =C-x t v=    | 打开 vterm 终端        |
+
+VTerm 是完整的终端模拟器，支持所有终端程序。
+
+* ❓ 帮助系统
+
+| 快捷键     | 功能                       |
+|------------+----------------------------|
+| =C-h f=    | 查询函数 (helpful 增强)    |
+| =C-h v=    | 查询变量                   |
+| =C-h k=    | 查询快捷键                 |
+| =C-h x=    | 查询命令                   |
+| =C-h o=    | 查询符号                   |
+| =C-h m=    | 当前模式帮助               |
+| =C-h B=    | 所有键绑定 (embark)        |
+
+* 🎨 自定义
+
+** 更换主题
+
+在 =init.el= 中找到 ~(load-theme 'doom-gruvbox t)~ ，替换为其他主题：
+
+#+begin_src emacs-lisp
+;; 暖色系
+(load-theme 'doom-gruvbox t)          ; 当前使用
+(load-theme 'doom-molokai t)          ; Monokai 风格
+(load-theme 'doom-palenight t)        ; 淡紫夜色
+(load-theme 'doom-tokyo-night t)      ; 东京之夜
+
+;; 冷色系
+(load-theme 'doom-one t)              ; Atom One Dark
+(load-theme 'doom-nord t)             ; Nord 极光
+(load-theme 'doom-dracula t)          ; Dracula
+
+;; 亮色
+(load-theme 'doom-one-light t)
+(load-theme 'doom-gruvbox-light t)
+#+end_src
+
+按 =C-c i= 快速打开 init.el 编辑。
+
+** 字体大小
+
+在 =init.el= 中修改 =:height 125= (单位: 1/10 pt，125 = 12.5pt)。
+
+** Nix 重建
+
+修改配置后需要重新构建：
+
+#+begin_src shell
+home-manager switch --flake .
+#+end_src
+
+* 📚 进阶资源
+
+- [[https://www.gnu.org/software/emacs/manual/][GNU Emacs 官方手册]]
+- [[https://magit.vc/manual/][Magit 手册]]
+- [[https://github.com/emacs-evil/evil][Evil Mode 文档]]
+- [[https://orgmode.org/manual/][Org Mode 手册]]
+- [[https://github.com/minad/vertico][Vertico 文档]]
+- [[https://github.com/minad/consult][Consult 文档]]
+
+* 💡 小贴士
+
+1. *不记得快捷键？* 按任意前缀键后等待 0.5 秒，=which-key= 会弹出提示
+2. *想执行某个命令？* =M-x= 然后输入关键词模糊搜索
+3. *Evil 模式不习惯？* =C-c e= 随时切回 Emacs 键位
+4. *文件找不到？* =M-s f= 在项目中模糊查找文件名
+5. *代码找不到？* =M-s r= 在项目中全文搜索（需要 =ripgrep=）
+6. *窗口乱了？* =C-c <left>= 用 winner-mode 撤销窗口变化
+7. *想看撤销历史？* =C-x u= 打开 undo-tree 可视化界面
