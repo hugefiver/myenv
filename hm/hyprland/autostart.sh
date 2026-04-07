@@ -22,7 +22,10 @@ dbus-update-activation-environment --systemd --all >/dev/null 2>&1 || true
 run_once 'kwalletd[56]' kwalletd6
 
 run_once '^hypridle$' hypridle
-run_once '^waybar$' waybar
+case "${BAR_BACKEND:-waybar}" in
+  quickshell) run_once '^quickshell$' quickshell ;;
+  *)          run_once '^waybar$' waybar ;;
+esac
 run_once '^dunst$' dunst
 run_once '^hyprpolkitagent$' hyprpolkitagent
 run_once 'clash-verge' clash-verge
@@ -78,4 +81,6 @@ fi
   fi
 ) >/dev/null 2>&1 &
 
-run_once 'waybar-autohide' ~/.config/hypr/scripts/waybar-autohide.sh
+if [ "${BAR_BACKEND:-waybar}" = "waybar" ]; then
+  run_once 'waybar-autohide' ~/.config/hypr/scripts/waybar-autohide.sh
+fi

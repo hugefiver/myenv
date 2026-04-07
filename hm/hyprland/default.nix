@@ -20,6 +20,7 @@
     slurp
     socat
     swappy             # 截图标注编辑器
+    quickshell
     swayimg
     swww
     waybar
@@ -98,4 +99,5 @@
   '';
   xdg.configFile."waybar/config".source = ./waybar/config;
   xdg.configFile."waybar/style.css".source = ./waybar/style.css;
+  xdg.configFile."quickshell" = { source = ./quickshell; recursive = true; };
 }
