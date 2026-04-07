@@ -12,7 +12,7 @@ PanelWindow {
     readonly property bool isMain: screen.name === "DVI-I-1"
     readonly property var wsIds: isMain ? [1, 2, 3, 4, 5, 6, 7] : [8, 9, 10]
     property var hyprMonitor: Hyprland.monitorFor(screen)
-    property int activeWsId: hyprMonitor?.activeWorkspace?.id ?? -1
+    property int activeWsId: (hyprMonitor && hyprMonitor.activeWorkspace) ? hyprMonitor.activeWorkspace.id : -1
 
     // ── Theme (matches waybar/style.css warm-dark palette) ──
     readonly property color bgPill:          Qt.rgba(0.165, 0.145, 0.125, 0.78)
@@ -89,7 +89,7 @@ PanelWindow {
                 MouseArea {
                     id: launcherMa; anchors.fill: parent
                     hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: Hyprland.dispatch("exec", "~/.config/hypr/scripts/rofi-launcher.sh")
+                    onClicked: Hyprland.dispatch("exec ~/.config/hypr/scripts/rofi-launcher.sh")
                 }
                 Behavior on color { ColorAnimation { duration: 200 } }
             }
@@ -130,7 +130,7 @@ PanelWindow {
                             MouseArea {
                                 id: wsMa; anchors.fill: parent
                                 hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: Hyprland.dispatch("workspace", parent.modelData.toString())
+                                onClicked: Hyprland.dispatch("workspace " + parent.modelData.toString())
                             }
 
                             Behavior on width   { NumberAnimation { duration: 200 } }
@@ -143,7 +143,7 @@ PanelWindow {
                 // scroll to switch workspace
                 WheelHandler {
                     onWheel: function(event) {
-                        Hyprland.dispatch("workspace", event.angleDelta.y > 0 ? "e-1" : "e+1")
+                        Hyprland.dispatch("workspace " + (event.angleDelta.y > 0 ? "e-1" : "e+1"))
                     }
                 }
             }
@@ -157,7 +157,7 @@ PanelWindow {
                 Text {
                     id: winLabel; anchors.centerIn: parent
                     width: parent.width - 20
-                    text: Hyprland.activeWindow?.title ?? ""
+                    text: Hyprland.activeToplevel ? Hyprland.activeToplevel.title : ""
                     color: bar.textDim
                     font { family: "Noto Sans"; pixelSize: 13 }
                     elide: Text.ElideRight; maximumLineCount: 1
@@ -233,7 +233,7 @@ PanelWindow {
 
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: Hyprland.dispatch("exec", "pavucontrol")
+                            onClicked: Hyprland.dispatch("exec pavucontrol")
                         }
                     }
                     Sep {}
@@ -257,7 +257,7 @@ PanelWindow {
 
                         Image {
                             required property var modelData
-                            source: modelData.icon ?? ""
+                            source: modelData.icon ? modelData.icon : ""
                             width: 15; height: 15
                             fillMode: Image.PreserveAspectFit
 
@@ -291,7 +291,7 @@ PanelWindow {
                 MouseArea {
                     id: powerMa; anchors.fill: parent
                     hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: Hyprland.dispatch("exec", "~/.config/hypr/scripts/power-menu.sh")
+                    onClicked: Hyprland.dispatch("exec ~/.config/hypr/scripts/power-menu.sh")
                 }
                 Behavior on color { ColorAnimation { duration: 200 } }
             }
