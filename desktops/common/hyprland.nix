@@ -6,6 +6,8 @@
 
   programs.hyprland = {
     enable = true;
+    package = unstable.hyprland;
+    portalPackage = unstable.xdg-desktop-portal-hyprland;
     withUWSM = true; 
     xwayland.enable = true;
   };

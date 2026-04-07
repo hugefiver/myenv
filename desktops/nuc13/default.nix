@@ -35,6 +35,7 @@
     extraReversePathFilterRules = ''
       iifname { "Mihomo" } accept comment "clash-verge TUN"
     '';
+    allowedUDPPorts = [ 4242 ];  # lan-mouse
   };
   
   boot.kernelPackages = pkgs.linuxPackages_zen;

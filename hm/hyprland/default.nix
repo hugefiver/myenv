@@ -1,5 +1,5 @@
-{ pkgs, ... }: {
-  home.packages = with pkgs; [
+{ pkgs, unstable, ... }: {
+  home.packages = with unstable; [
     brightnessctl
     cliphist
     dunst
@@ -10,7 +10,8 @@
     hyprlock
     hyprpolkitagent
     jq
-    kdePackages.kwallet  # Hyprland 会话也用 kwallet 做 Secret Service
+    pkgs.kdePackages.kwallet  # Hyprland 会话也用 kwallet 做 Secret Service（跟随系统 KDE）
+    lan-mouse            # 跨设备鼠标键盘共享（Software KVM）
     libnotify
     mpvpaper
     networkmanagerapplet # nm-connection-editor：图形化编辑 WiFi/VPN 配置
@@ -31,10 +32,11 @@
 
   wayland.windowManager.hyprland = {
     enable = true;
+    package = unstable.hyprland;
     systemd.enable = true;
     xwayland.enable = true;
     plugins = [
-      pkgs.hyprlandPlugins.hyprexpo
+      unstable.hyprlandPlugins.hyprexpo
     ];
 
     extraConfig = ''

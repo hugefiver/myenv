@@ -13,6 +13,7 @@ in {
   i18n.inputMethod = {
     enable = true;
     type = "fcitx5";
+    fcitx5.fcitx5-with-addons = unstable.qt6Packages.fcitx5-with-addons;
     fcitx5.waylandFrontend = true;
     fcitx5.addons = with unstable; [
       fcitx5-nord
@@ -45,7 +46,14 @@ in {
   home.activation.rimeDeploySchemas = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     RIME_DIR="''${XDG_DATA_HOME:-$HOME/.local/share}/fcitx5/rime"
     mkdir -p "$RIME_DIR"
-    run ${custom-librime}/bin/rime_deployer --build "$RIME_DIR" --shared-data-dir ${fcitx5-rime-pkg}/share/rime-data 2>/dev/null || true
+
+    # 调试：验证 store 路径
+    echo "rime_deployer: ${custom-librime}/bin/rime_deployer"
+    ls -la ${custom-librime}/bin/rime_deployer 2>&1 || echo "WARNING: rime_deployer not found!"
+    echo "rime-data dir: ${fcitx5-rime-pkg}/share/rime-data"
+    ls ${fcitx5-rime-pkg}/share/rime-data/ 2>&1 | head -20 || echo "WARNING: rime-data dir empty or missing!"
+
+    run ${custom-librime}/bin/rime_deployer --build "$RIME_DIR" --shared-data-dir ${fcitx5-rime-pkg}/share/rime-data || echo "WARNING: rime_deployer failed with exit code $?"
   '';
 
   # ── fcitx5 profile：键盘 + RIME ──────────────────────────────
