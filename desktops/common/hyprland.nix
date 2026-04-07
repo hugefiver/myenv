@@ -10,6 +10,21 @@
     xwayland.enable = true;
   };
 
+  # SDDM 会话入口：Hyprland (QuickShell)
+  # 通过 env 设置 BAR_BACKEND，UWSM 会继承给 Hyprland → autostart.sh
+  services.displayManager.sessionPackages = let
+    qs-session = pkgs.writeTextDir
+      "share/wayland-sessions/hyprland-quickshell.desktop" ''
+        [Desktop Entry]
+        Name=Hyprland (QuickShell)
+        Comment=Hyprland with QuickShell status bar
+        Exec=env BAR_BACKEND=quickshell uwsm start -S hyprland
+        Type=Application
+      '';
+  in [
+    (qs-session.overrideAttrs { passthru.providedSessions = [ "hyprland-quickshell" ]; })
+  ];
+
   security.pam.services.hyprlock = {};
 
   # kwallet-pam：SDDM 登录时用用户密码自动解锁 kwallet，
