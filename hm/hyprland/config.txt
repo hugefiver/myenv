@@ -63,14 +63,14 @@ decoration {
 
 	blur {
 		enabled = true
-		size = 12
-		passes = 5
+		size = 8
+		passes = 3
 		new_optimizations = true
 		xray = true
-		noise = 0.03
-		contrast = 0.85
-		brightness = 0.82
-		vibrancy = 0.12
+		noise = 0.01
+		contrast = 0.92
+		brightness = 0.92
+		vibrancy = 0.15
 	}
 }
 
