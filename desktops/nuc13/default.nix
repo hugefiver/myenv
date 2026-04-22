@@ -29,11 +29,12 @@
     Group = lib.mkForce "users";
   };
   # TUN 接口需要 nftables 放通，否则流量被 rpfilter 丢弃
+  # clash-verge-rev (mihomo) 默认 tun device 名为 "Meta"
   # https://github.com/NixOS/nixpkgs/issues/477636
   networking.firewall = {
-    trustedInterfaces = [ "Mihomo" ];
+    trustedInterfaces = [ "Meta" ];
     extraReversePathFilterRules = ''
-      iifname { "Mihomo" } accept comment "clash-verge TUN"
+      iifname { "Meta" } accept comment "clash-verge TUN"
     '';
     allowedUDPPorts = [ 4242 ];  # lan-mouse
   };
