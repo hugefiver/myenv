@@ -32,7 +32,11 @@
 
   wayland.windowManager.hyprland = {
     enable = true;
-    package = unstable.hyprland;
+    # Hyprland 二进制由 NixOS 模块 (programs.hyprland.enable) 提供，
+    # 这里设为 null 避免 home.packages 再装一份导致 hyprland-share-picker 等
+    # 二进制重复在 PATH 中冲突。HM 仅负责生成配置文件和加载 plugins。
+    # 见 HM hyprland 模块 package option 的 extraDescription。
+    package = null;
     # 系统侧已启用 programs.hyprland.withUWSM = true，UWSM 会自己管理
     # graphical-session.target / wayland-wm@hyprland.target。
     # Hyprland 官方 wiki 明确要求：使用 UWSM 时 HM 这边必须关掉 systemd 集成，

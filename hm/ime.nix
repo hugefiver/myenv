@@ -1,8 +1,9 @@
 { unstable, lib, ... }:
 let
-  custom-librime = unstable.librime.override {
-    plugins = [ unstable.librime-lua ];
-  };
+  # nixpkgs 的 librime 默认 plugins = [ librime-lua librime-octagram ]，
+  # 直接用即可走二进制缓存。早期这里做 .override { plugins = [ librime-lua ]; }
+  # 反而触发本地编译。
+  custom-librime = unstable.librime;
   fcitx5-rime-pkg = unstable.fcitx5-rime.override {
     librime = custom-librime;
     rimeDataPkgs = [
