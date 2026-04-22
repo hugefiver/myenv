@@ -110,8 +110,10 @@ in {
       "switches/@0/states": [ Ａ, 中 ]
       "switches/@0/reset": 1
 
-      # 模糊音
-      "speller/algebra/@before 0":
+      # 模糊音 —— 用 /+ 合并操作符追加到 rime_ice 已有 algebra 列表后面。
+      # 注意：不能用 "speller/algebra/@before 0"，那是「插入单条」语法，
+      # 把 list 当 1 条公式塞进去会报 algebra.cc] Error loading formula #1。
+      "speller/algebra/+":
         - derive/^([zcs])h/$1/          # zh ch sh → z c s
         - derive/^([zcs])([^h])/$1h$2/  # z c s → zh ch sh
         - derive/^l/n/
