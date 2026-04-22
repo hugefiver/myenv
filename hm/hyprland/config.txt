@@ -112,7 +112,8 @@ animation = layers, 1, 2, md3_decel, popin 80%
 
 dwindle {
 	preserve_split = true
-	smart_split = true
+	# smart_split 会基于光标四象限决定切分方向，会覆盖 force_split；
+	# 这里固定使用 force_split=2（新窗口在右/下），避免冲突。
 	force_split = 2
 }
 
@@ -127,7 +128,7 @@ misc {
 	focus_on_activate = true
 	mouse_move_enables_dpms = true
 	key_press_enables_dpms = true
-	vfr = true
+	# 注：旧版 misc:vfr 已被移除（迁移到 debug:vfr，默认开启），无需再写。
 }
 
 bindm = $mod, mouse:272, movewindow

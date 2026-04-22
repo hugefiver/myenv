@@ -33,7 +33,12 @@
   wayland.windowManager.hyprland = {
     enable = true;
     package = unstable.hyprland;
-    systemd.enable = true;
+    # 系统侧已启用 programs.hyprland.withUWSM = true，UWSM 会自己管理
+    # graphical-session.target / wayland-wm@hyprland.target。
+    # Hyprland 官方 wiki 明确要求：使用 UWSM 时 HM 这边必须关掉 systemd 集成，
+    # 否则与 UWSM 冲突。
+    # https://github.com/hyprwm/hyprland-wiki/blob/main/content/Useful%20Utilities/Systemd-start.md
+    systemd.enable = false;
     xwayland.enable = true;
     plugins = [
       unstable.hyprlandPlugins.hyprexpo
