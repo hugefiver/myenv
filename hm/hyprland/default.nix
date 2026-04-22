@@ -23,7 +23,7 @@
     swappy             # 截图标注编辑器
     quickshell
     swayimg
-    swww
+    awww  # swww 已 archived 改名 awww（codeberg.org/LGFae/awww）
     waybar
     wf-recorder        # 轻量 Wayland 录屏，支持 slurp 区域选择
     wlr-randr

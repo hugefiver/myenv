@@ -41,8 +41,8 @@ run_once 'clash-verge' clash-verge
 #   run_once 'clash-verge' clash-verge
 # ) &
 
-if ! pgrep -x swww-daemon >/dev/null 2>&1; then
-  swww-daemon >/dev/null 2>&1 &
+if ! pgrep -x awww-daemon >/dev/null 2>&1; then
+  awww-daemon >/dev/null 2>&1 &
   sleep 0.4
 fi
 
@@ -56,7 +56,7 @@ else
     "$HOME/Pictures/Wallpapers/default.jpg" \
     "$HOME/Pictures/Wallpapers/default.jpeg"; do
     if [ -f "$wallpaper" ]; then
-      swww img "$wallpaper" \
+      awww img "$wallpaper" \
         --transition-type grow \
         --transition-pos center \
         --transition-duration 1.1 >/dev/null 2>&1 || true
@@ -85,7 +85,7 @@ fi
       "$HOME/Pictures/Wallpapers/default.jpg" \
       "$HOME/Pictures/Wallpapers/default.jpeg"; do
       if [ -f "$wallpaper" ]; then
-        swww img "$wallpaper" --transition-type none 2>/dev/null || true
+        awww img "$wallpaper" --transition-type none 2>/dev/null || true
         break
       fi
     done
