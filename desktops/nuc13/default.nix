@@ -43,6 +43,18 @@
     gcc-x86_64-v3 = true;
   };
 
+  # ── 蓝牙 ─────────────────────────────────────────────────────
+  # Plasma6 的 bluedevil 是按 hardware.bluetooth.enable 条件加入的，
+  # plasma6.enable 自身不会启用 BlueZ；必须显式打开下面这一项。
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
+    settings.General.Experimental = true;  # 启用 BLE 电量等实验特性
+  };
+  # blueman 提供 obex 文件传输代理 + GTK 配对/管理 GUI（blueman-manager）。
+  # Hyprland 会话下作为蓝牙 UI 入口；KDE 会话仍走 bluedevil。
+  services.blueman.enable = true;
+
   networking.hostName = "desktop-nuc13";
   # NetworkManager 全权管理网络，scripted backend 不需要管任何接口。
   # networking.useDHCP = false 仅关闭全局默认；但 nixos-facter 会为
