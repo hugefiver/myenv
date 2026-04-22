@@ -30,5 +30,24 @@ return {
       mods = "NONE",
       action = act.PasteFrom("Clipboard"),
     },
+    -- 取消「单击链接直接打开浏览器」的默认行为：
+    -- 左键单击释放只做选区/取消选区，不再跟随 link。
+    {
+      event = { Up = { streak = 1, button = "Left" } },
+      mods = "NONE",
+      action = act.CompleteSelection("ClipboardAndPrimarySelection"),
+    },
+    -- Ctrl + 左键单击：打开光标下的链接。
+    {
+      event = { Up = { streak = 1, button = "Left" } },
+      mods = "CTRL",
+      action = act.OpenLinkAtMouseCursor,
+    },
+    -- 阻止 Ctrl+左键 在按下时移动光标 / 触发其它默认动作。
+    {
+      event = { Down = { streak = 1, button = "Left" } },
+      mods = "CTRL",
+      action = wezterm.action.Nop,
+    },
   },
 }
