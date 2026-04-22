@@ -50,11 +50,11 @@
 
       "application/pdf" = [ "org.kde.okular.desktop" ];
 
-      "text/html" = [ "org.kde.falkon.desktop" ];
-      "application/xhtml+xml" = [ "org.kde.falkon.desktop" ];
-      "application/vnd.mozilla.xul+xml" = [ "org.kde.falkon.desktop" ];
-      "x-scheme-handler/http" = [ "org.kde.falkon.desktop" ];
-      "x-scheme-handler/https" = [ "org.kde.falkon.desktop" ];
+      "text/html" = [ "firefox.desktop" ];
+      "application/xhtml+xml" = [ "firefox.desktop" ];
+      "application/vnd.mozilla.xul+xml" = [ "firefox.desktop" ];
+      "x-scheme-handler/http" = [ "firefox.desktop" ];
+      "x-scheme-handler/https" = [ "firefox.desktop" ];
 
       "inode/directory" = [ "org.kde.dolphin.desktop" ];
       "application/x-7z-compressed" = [ "org.kde.ark.desktop" ];

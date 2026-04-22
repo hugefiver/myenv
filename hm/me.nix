@@ -55,7 +55,7 @@
   ];
 
   home.sessionVariables = {
-    BROWSER = "falkon";
+    BROWSER = "firefox";
     EDITOR = "emacsclient -c -a emacs";
     TERMINAL = "wezterm";
     VISUAL = "emacsclient -c -a emacs";
