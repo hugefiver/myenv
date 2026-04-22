@@ -53,7 +53,9 @@ in {
     echo "rime-data dir: ${fcitx5-rime-pkg}/share/rime-data"
     ls ${fcitx5-rime-pkg}/share/rime-data/ 2>&1 | head -20 || echo "WARNING: rime-data dir empty or missing!"
 
-    run ${custom-librime}/bin/rime_deployer --build "$RIME_DIR" --shared-data-dir ${fcitx5-rime-pkg}/share/rime-data || echo "WARNING: rime_deployer failed with exit code $?"
+    # rime_deployer --build 使用位置参数： user_data_dir [shared_data_dir]
+    # 不是 --shared-data-dir flag！之前误用 flag 导致构建失败。
+    run ${custom-librime}/bin/rime_deployer --build "$RIME_DIR" ${fcitx5-rime-pkg}/share/rime-data || echo "WARNING: rime_deployer failed with exit code $?"
   '';
 
   # ── fcitx5 profile：键盘 + RIME ──────────────────────────────
