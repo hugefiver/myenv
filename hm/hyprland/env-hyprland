@@ -12,3 +12,8 @@ done
 export AQ_DRM_DEVICES="$_devs"
 
 export AQ_MGPU_NO_EXPLICIT=1
+
+# WebKitGTK / Tauri (clash-verge-rev) under Wayland: the DMA-BUF renderer
+# fails to load assets (blank UI, broken CSS). Force the legacy renderer.
+export WEBKIT_DISABLE_DMABUF_RENDERER=1
+export WEBKIT_DISABLE_COMPOSITING_MODE=1
