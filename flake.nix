@@ -19,6 +19,13 @@
     # microvm.inputs.nixpkgs.follows = "nixpkgs";
 
     nixos-facter-modules.url = "github:numtide/nixos-facter-modules";
+
+    # 仅作为 hyprexpo 源码提供者：nixpkgs 中的 hyprlandPlugins.hyprexpo 版本
+    # 常滞后于 hyprland，导致编译失败（如 hyprland 0.54.x + hyprexpo 0.53.0
+    # 的 HookSystemManager.hpp 头文件路径变更）。我们只覆盖 src，hyprland
+    # 主体仍使用 nixpkgs 缓存。
+    hyprland-plugins.url = "github:hyprwm/hyprland-plugins";
+    hyprland-plugins.flake = false;
   };
 
   outputs = inputs@{
@@ -49,7 +56,21 @@
 
         mkSpecialArgs = system: {
           inherit self inputs system;
-          unstable = mkPkgs nixpkgs-unstable system { config.allowUnfree = true; };
+          unstable = mkPkgs nixpkgs-unstable system {
+            config.allowUnfree = true;
+            overlays = [
+              # 用 hyprland-plugins flake input 的源码覆盖 nixpkgs 中可能版本
+              # 错配的 hyprexpo，hyprland 主体仍走 nixpkgs 二进制缓存。
+              (final: prev: {
+                hyprlandPlugins = prev.hyprlandPlugins // {
+                  hyprexpo = prev.hyprlandPlugins.hyprexpo.overrideAttrs (_old: {
+                    src = "${inputs.hyprland-plugins}/hyprexpo";
+                    version = "git-${inputs.hyprland-plugins.shortRev or "dirty"}";
+                  });
+                };
+              })
+            ];
+          };
         };
 
         commonNixosModule = {

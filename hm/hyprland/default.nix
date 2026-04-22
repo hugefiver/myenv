@@ -40,6 +40,8 @@
     # https://github.com/hyprwm/hyprland-wiki/blob/main/content/Useful%20Utilities/Systemd-start.md
     systemd.enable = false;
     xwayland.enable = true;
+    # hyprexpo 通过 flake.nix 的 overlay 用 hyprland-plugins 上游 master 源码覆盖，
+    # 解决 nixpkgs 中 hyprexpo 0.53.0 与 hyprland 0.54.x 头文件不兼容问题。
     plugins = [
       unstable.hyprlandPlugins.hyprexpo
     ];

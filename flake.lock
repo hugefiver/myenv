@@ -58,6 +58,22 @@
         "type": "github"
       }
     },
+    "hyprland-plugins": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776702833,
+        "narHash": "sha256-xmzpa+kFv1zDei3nT1sWZ/Q9TdMK/Rhx1I09VuO2F3E=",
+        "owner": "hyprwm",
+        "repo": "hyprland-plugins",
+        "rev": "6acc0738f298f5efe40a99db2c12449112d65633",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hyprwm",
+        "repo": "hyprland-plugins",
+        "type": "github"
+      }
+    },
     "nixos-facter-modules": {
       "locked": {
         "lastModified": 1773858690,
@@ -141,6 +157,7 @@
         "disko": "disko",
         "flake-parts": "flake-parts",
         "home-manager": "home-manager",
+        "hyprland-plugins": "hyprland-plugins",
         "nixos-facter-modules": "nixos-facter-modules",
         "nixpkgs": "nixpkgs",
         "nixpkgs-big": "nixpkgs-big",
