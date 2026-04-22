@@ -88,7 +88,7 @@
     source = ./scripts/power-menu.sh;
     executable = true;
   };
-  xdg.configFile."hypr/base.conf".source = ./config.txt;
+  xdg.configFile."hypr/base.conf".source = ./base.conf;
   xdg.configFile."hypr/keybinds.conf".source = ./keybinds.conf;
   xdg.configFile."hypr/hypridle.conf".source = ./hypridle.conf;
   xdg.configFile."hypr/hyprlock.conf".source = ./hyprlock.conf;

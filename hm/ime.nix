@@ -32,7 +32,7 @@ in {
   #
   # GTK_IM_MODULE / QT_IM_MODULE：不在此全局设置！
   #   KDE Plasma：原生支持 text-input-v2/v3，全局设置会导致候选窗闪烁。
-  #   Hyprland：在 hyprland/config.txt 的 env 中单独设置
+  #   Hyprland：在 hyprland/base.conf 的 env 中单独设置
   #            （Qt 无 text-input-v2 支持，必须用 fcitx IM module）。
   home.sessionVariables = {
     XMODIFIERS = "@im=fcitx";
