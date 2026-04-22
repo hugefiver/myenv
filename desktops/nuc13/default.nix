@@ -28,13 +28,17 @@
     RuntimeDirectoryMode = lib.mkForce "0755";
     Group = lib.mkForce "users";
   };
-  # TUN 接口需要 nftables 放通，否则流量被 rpfilter 丢弃
-  # clash-verge-rev (mihomo) 默认 tun device 名为 "Meta"
+  # TUN 接口需要 nftables 放通，否则流量被 rpfilter 丢弃。
+  # 设备名由 mihomo 内核决定（不是 GUI「设备名」字段）：
+  #   - 当前实测：`ip -br a` 看到的是 "Meta"（mihomo 默认）
+  #   - GUI 字段虽显示 "Mihomo" 但 service mode 下 IPC 不一定 propagate 到内核
+  #   - nixpkgs programs.clash-verge 模块未暴露接口名选项
+  # 同时放通两个候选名，对齐内核侧 ground truth，避免改名后断网。
   # https://github.com/NixOS/nixpkgs/issues/477636
   networking.firewall = {
-    trustedInterfaces = [ "Meta" ];
+    trustedInterfaces = [ "Meta" "Mihomo" ];
     extraReversePathFilterRules = ''
-      iifname { "Meta" } accept comment "clash-verge TUN"
+      iifname { "Meta", "Mihomo" } accept comment "clash-verge TUN"
     '';
     allowedUDPPorts = [ 4242 ];  # lan-mouse
   };
