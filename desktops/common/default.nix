@@ -57,7 +57,8 @@
     LC_TELEPHONE = "zh_CN.UTF-8";
     LC_TIME = "zh_CN.UTF-8";
     LC_COLLATE = "en_US.UTF-8";
-    LC_MESSAGES = "en_US.UTF-8";
+    # 注意：不再覆盖 LC_MESSAGES。Plasma6/KI18n/Qt 都按 LC_MESSAGES 选 UI 翻译，
+    # 设成 en_US.UTF-8 会导致 KDE 全英文。让它跟随 i18n.defaultLocale = zh_CN.UTF-8。
   };
   i18n.supportedLocales = [ "zh_CN.UTF-8/UTF-8" "en_US.UTF-8/UTF-8" ];
 
@@ -69,7 +70,8 @@
 
   environment.sessionVariables = {
     LANG = "zh_CN.UTF-8";
-    LC_MESSAGES = "en_US.UTF-8";
+    # LC_MESSAGES 已经从 i18n.extraLocaleSettings 移除，这里也不再强制英文，
+    # 否则 Plasma/KDE 应用界面会被强制英文。
     NIXOS_OZONE_WL = "1";
   };
 
