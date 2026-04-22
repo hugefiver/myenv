@@ -136,12 +136,14 @@ bindm = $mod, mouse:273, resizewindow
 
 # ── Layer Rules ──────────────────────────────────────────────
 # waybar / rofi / wlogout 等 layer shell 表面的毛玻璃效果
-layerrule = blur, waybar
-layerrule = ignorealpha 0.3, waybar
-layerrule = blur, rofi
-layerrule = ignorealpha 0.3, rofi
-layerrule = blur, logout_dialog
-layerrule = ignorealpha 0.3, logout_dialog
+# v3 语法：layerrule = effect [arg], match:namespace ^...$
+# 注意 ignorealpha 已改名 ignore_alpha
+layerrule = blur, match:namespace ^(waybar)$
+layerrule = ignore_alpha 0.3, match:namespace ^(waybar)$
+layerrule = blur, match:namespace ^(rofi)$
+layerrule = ignore_alpha 0.3, match:namespace ^(rofi)$
+layerrule = blur, match:namespace ^(logout_dialog)$
+layerrule = ignore_alpha 0.3, match:namespace ^(logout_dialog)$
 
 bindel = , XF86MonBrightnessUp, exec, brightnessctl s 10%+
 bindel = , XF86MonBrightnessDown, exec, brightnessctl s 10%-
