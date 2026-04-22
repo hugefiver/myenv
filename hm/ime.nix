@@ -84,6 +84,11 @@ in {
   # ── RIME 全局配置 ──────────────────────────────────────────────
   xdg.dataFile."fcitx5/rime/default.custom.yaml".text = ''
     patch:
+      # nixpkgs 把 rime-ice 上游的 default.yaml 重命名为 rime_ice_suggestion.yaml
+      # （避免覆盖用户 default.yaml）；rime_ice.schema.yaml 内部
+      # __include: default:/punctuator/full_shape 等条目依赖它，
+      # 不 include 进来 schema 构建会失败：unresolved dependency: Include(default:/punctuator/...)
+      __include: rime_ice_suggestion:/
       schema_list:
         - schema: rime_ice
       menu:
