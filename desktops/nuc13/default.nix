@@ -42,6 +42,30 @@
     '';
     allowedUDPPorts = [ 4242 ];  # lan-mouse
   };
+
+  # ── Boot-time mihomo daemon (handed off to clash-verge after login) ──
+  # 用户登录前就把代理拉起来。读 verge 上一次落盘的运行时 yaml
+  # (clash-verge.yaml)，包含订阅 + Merge.yaml + Script.js 合并后的完整配置。
+  # 登录到 Hyprland 后，autostart.sh 里 `sudo systemctl stop mihomo-boot`
+  # 让出 TUN / 7890 / 9090，clash-verge GUI 接管自己的 mihomo 实例。
+  # Restart=no 避免被 stop 后自启反复抢端口。
+  systemd.services.mihomo-boot = {
+    description = "Mihomo proxy (boot-time, handed off to clash-verge after login)";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart =
+        "${unstable.mihomo}/bin/mihomo "
+        + "-d /home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev "
+        + "-f /home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";
+      Restart = "no";
+      AmbientCapabilities = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_NET_BIND_SERVICE" ];
+      CapabilityBoundingSet = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_NET_BIND_SERVICE" ];
+      TimeoutStartSec = "10s";
+    };
+  };
   
   boot.kernelPackages = pkgs.linuxPackages_zen;
   boot.kernel.features = {
