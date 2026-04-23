@@ -41,6 +41,32 @@
       iifname { "Meta", "Mihomo" } accept comment "clash-verge TUN"
     '';
     allowedUDPPorts = [ 4242 ];  # lan-mouse
+
+    # ── DNS 重定向到 mihomo ────────────────────────────────
+    # 8f5c6ec 把 TUN 路由收窄到 fake-ip /16 后，default 不再进 TUN，
+    # 系统 DNS 查询（指向 8.8.8.8 之类）不会被 mihomo 自动 hijack，
+    # 拿不到 fake-ip → 应用拿到真实 IP → 直连失败。
+    #
+    # sing-tun 的 ip rule 设计「prio 9001: not dport 53 lookup main
+    # suppress_prefixlength 0」也明确说明 DNS 必须被 TUN 截到才能正常工作；
+    # 窄路由让这条假设失效，必须显式补一条 DNAT。
+    #
+    # 这里把所有出站 :53 NAT 到 mihomo `127.0.0.1:8853`，让 fake-ip 链路
+    # 回归。fwmark 0x6d6968 是 sing-tun 标记 mihomo 自身上行 DNS 用的，
+    # 必须 RETURN 跳过否则会自循环。
+    extraCommands = ''
+      iptables -t nat -F mihomo-dns 2>/dev/null || iptables -t nat -N mihomo-dns
+      iptables -t nat -A mihomo-dns -m mark --mark 0x6d6968 -j RETURN
+      iptables -t nat -A mihomo-dns -d 127.0.0.0/8 -j RETURN
+      iptables -t nat -A mihomo-dns -p udp --dport 53 -j REDIRECT --to-ports 8853
+      iptables -t nat -A mihomo-dns -p tcp --dport 53 -j REDIRECT --to-ports 8853
+      iptables -t nat -C OUTPUT -j mihomo-dns 2>/dev/null || iptables -t nat -A OUTPUT -j mihomo-dns
+    '';
+    extraStopCommands = ''
+      iptables -t nat -D OUTPUT -j mihomo-dns 2>/dev/null || true
+      iptables -t nat -F mihomo-dns 2>/dev/null || true
+      iptables -t nat -X mihomo-dns 2>/dev/null || true
+    '';
   };
 
   # ── Boot-time mihomo daemon (handed off to clash-verge after login) ──
@@ -54,13 +80,14 @@
   #   `tun.inet4-route-address = [198.18.0.0/16]`，让 sing-tun 只把
   #   fake-ip 段写进策略路由表，不再 hijack `default`。这样：
   #     - 真实 IP 流量（包括 SSH 入站回包）走 main 表 → wlo1，不进 TUN
-  #     - 域名解析走 mihomo DNS → 拿到 fake-ip → 命中 198.18/16 → 进 TUN
+  #     - DNS 查询由上面 `networking.firewall.extraCommands` 的 iptables
+  #       NAT 规则强制重定向到 mihomo `127.0.0.1:8853` → 拿到 fake-ip
+  #       → 命中 198.18/16 → 进 TUN
   #     - 实现 fake-ip 透明代理，但内核路由表零侵入
   #
   # ⚠ 前提：verge profile 必须已开 fake-ip
   #   `dns.enhanced-mode: fake-ip` + `dns.fake-ip-range: 198.18.0.1/16`
-  #   verge alone 之所以 SSH 没问题，大概率就是 verge-mihomo 在 fake-ip
-  #   下自带这种收窄默认；上游 mihomo 没这层智能，必须显式注入。
+  #   且 `dns.listen` 必须是 `127.0.0.1:8853`（与 nat 规则的端口对齐）。
   #
   # 启动前等真出口：
   #   mihomo 用 auto-detect-interface 决定上行接口。NM 还没把 wlo1 拉起来时
