@@ -44,11 +44,10 @@
   };
 
   # ── Boot-time mihomo daemon (handed off to clash-verge after login) ──
-  # 用户登录前就把代理拉起来。读 verge 上一次落盘的运行时 yaml
+  # 用户登录前就把代理端口拉起来。读 verge 上一次落盘的运行时 yaml
   # (clash-verge.yaml)，包含订阅 + Merge.yaml + Script.js 合并后的完整配置。
   # 登录到 Hyprland 后，autostart.sh 里 `sudo systemctl stop mihomo-boot`
   # 让出 7890 / 9090，clash-verge GUI 接管自己的 mihomo 实例。
-  # Restart=no 避免被 stop 后自启反复抢端口。
   #
   # 关键：剥掉 TUN 段
   #   verge 的 yaml 通常带 `tun.enable: true`，会建 Meta 接口、auto-route
@@ -56,24 +55,22 @@
   #   wrapper 用 yq 把 tun 段删掉再喂给 mihomo，boot 阶段只起 SOCKS5/HTTP，
   #   不动路由表。要走代理的程序自己设 http_proxy。verge 接管时再带 TUN。
   #
-  # 失败策略：宁可不启
-  #   - ConditionPathExists 文件不在 → unit skip（不进 failed）
-  #   - ExecStartPre nm-online 等真实网络就绪（最多 20s）
-  #   - mihomo -t 校验失败 → unit failed，不留半死状态
+  # 不卡 boot：
+  #   不依赖 network-online.target（你的机器上禁用了 NM/networkd 的
+  #   wait-online，这个 target 几乎是空操作；强行 nm-online 又会拖慢启动）。
+  #   网络没就绪就让 mihomo 启动失败，systemd 5s 后重试，网络一来自然就起。
   systemd.services.mihomo-boot =
     let
       vergeDir = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev";
       vergeCfg = "${vergeDir}/clash-verge.yaml";
       startScript = pkgs.writeShellApplication {
         name = "mihomo-boot-start";
-        runtimeInputs = [ unstable.mihomo pkgs.yq-go pkgs.networkmanager ];
+        runtimeInputs = [ unstable.mihomo pkgs.yq-go ];
         text = ''
           VERGE_DIR='${vergeDir}'
           VERGE_CFG='${vergeCfg}'
           RUN_DIR="''${RUNTIME_DIRECTORY:-/run/mihomo-boot}"
           RUN_CFG="$RUN_DIR/config.yaml"
-
-          nm-online -q --timeout=20 || echo "[mihomo-boot] warning: nm-online timed out, proceeding anyway"
 
           yq 'del(.tun) | del(.dns.fake-ip-range) | del(.dns.enhanced-mode)' "$VERGE_CFG" > "$RUN_CFG"
 
@@ -86,17 +83,17 @@
     in
     {
       description = "Mihomo proxy (boot-time, no TUN, handed off to clash-verge after login)";
-      after = [ "network-online.target" ];
-      wants = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
       unitConfig = {
         ConditionPathExists = vergeCfg;
+        StartLimitIntervalSec = 0;  # 无限重试，配合下面 RestartSec=5s
       };
       serviceConfig = {
         Type = "simple";
         ExecStart = "${startScript}/bin/mihomo-boot-start";
-        Restart = "no";
-        TimeoutStartSec = "45s";
+        Restart = "on-failure";
+        RestartSec = "5s";
+        TimeoutStartSec = "10s";
         RuntimeDirectory = "mihomo-boot";
         RuntimeDirectoryMode = "0700";
       };
