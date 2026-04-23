@@ -44,45 +44,59 @@
   };
 
   # ── Boot-time mihomo daemon (handed off to clash-verge after login) ──
-  # 用户登录前就把代理端口拉起来。读 verge 上一次落盘的运行时 yaml
+  # 用户登录前就把代理 + TUN 拉起来。读 verge 上一次落盘的运行时 yaml
   # (clash-verge.yaml)，包含订阅 + Merge.yaml + Script.js 合并后的完整配置。
   # 登录到 Hyprland 后，autostart.sh 里 `sudo systemctl stop mihomo-boot`
-  # 让出 7890 / 9090，clash-verge GUI 接管自己的 mihomo 实例。
+  # 让出 TUN / 7890 / 9090，clash-verge GUI 接管自己的 mihomo 实例。
   #
-  # 关键：剥掉 TUN 段
-  #   verge 的 yaml 通常带 `tun.enable: true`，会建 Meta 接口、auto-route
-  #   抢默认路由表 → 入站 SSH 回包走 TUN → 黑洞 → 远程登录失联。
-  #   wrapper 用 yq 把 tun 段删掉再喂给 mihomo，boot 阶段只起 SOCKS5/HTTP，
-  #   不动路由表。要走代理的程序自己设 http_proxy。verge 接管时再带 TUN。
+  # TUN 模式同 verge：
+  #   配置原样喂给 mihomo（不再 yq 剥 tun 段）。
+  #   ⚠ 前提：profile 的 Merge.yaml 必须有 LAN 旁路规则
+  #   （IP-CIDR 192.168.0.0/16 / 10.0.0.0/8 / 172.16.0.0/12 -> DIRECT,no-resolve），
+  #   否则远端 SSH 入站回包会被 auto-route 引到 TUN → 黑洞 → 失联。
+  #
+  # 启动前等真出口：
+  #   mihomo 用 auto-detect-interface 决定上行接口。NM 还没把 wlo1 拉起来时
+  #   default 路由要么没有要么指向旧 TUN，会让策略路由配错。
+  #   wait-default-route loop 死等"非 Meta/Mihomo 的 default 路由"出现，最多 60s。
   #
   # 不卡 boot：
-  #   不依赖 network-online.target（你的机器上禁用了 NM/networkd 的
-  #   wait-online，这个 target 几乎是空操作；强行 nm-online 又会拖慢启动）。
-  #   网络没就绪就让 mihomo 启动失败，systemd 5s 后重试，网络一来自然就起。
+  #   不依赖 network-online.target（你机器上 NM/networkd wait-online 都禁了）。
+  #   wait loop 超时也会继续启 mihomo（带 Restart=on-failure 兜底），
+  #   不会阻塞其它 unit。
   systemd.services.mihomo-boot =
     let
       vergeDir = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev";
       vergeCfg = "${vergeDir}/clash-verge.yaml";
       startScript = pkgs.writeShellApplication {
         name = "mihomo-boot-start";
-        runtimeInputs = [ unstable.mihomo pkgs.yq-go ];
+        runtimeInputs = [ unstable.mihomo pkgs.iproute2 pkgs.gnugrep ];
         text = ''
           VERGE_DIR='${vergeDir}'
           VERGE_CFG='${vergeCfg}'
-          RUN_DIR="''${RUNTIME_DIRECTORY:-/run/mihomo-boot}"
-          RUN_CFG="$RUN_DIR/config.yaml"
 
-          yq 'del(.tun) | del(.dns.fake-ip-range) | del(.dns.enhanced-mode)' "$VERGE_CFG" > "$RUN_CFG"
+          # 等到出现非-TUN 的 default 路由（NM 起好 wlo1 / eth0），最多 60s
+          for i in $(seq 1 60); do
+            if ip -4 route show default 2>/dev/null \
+                | grep -E '^default ' \
+                | grep -vE 'dev (Meta|Mihomo)' \
+                | grep -q .; then
+              echo "[mihomo-boot] default route ready after ''${i}s"
+              break
+            fi
+            sleep 1
+          done
 
-          mihomo -t -d "$VERGE_DIR" -f "$RUN_CFG"
+          # 校验配置（坏 yaml 直接退出，systemd 5s 后重试）
+          mihomo -t -d "$VERGE_DIR" -f "$VERGE_CFG"
 
-          echo "[mihomo-boot] starting mihomo (TUN stripped, SOCKS5/HTTP only)"
-          exec mihomo -d "$VERGE_DIR" -f "$RUN_CFG"
+          echo "[mihomo-boot] starting mihomo (full config incl. TUN)"
+          exec mihomo -d "$VERGE_DIR" -f "$VERGE_CFG"
         '';
       };
     in
     {
-      description = "Mihomo proxy (boot-time, no TUN, handed off to clash-verge after login)";
+      description = "Mihomo proxy (boot-time, full TUN, handed off to clash-verge after login)";
       wantedBy = [ "multi-user.target" ];
       unitConfig = {
         ConditionPathExists = vergeCfg;
@@ -93,9 +107,8 @@
         ExecStart = "${startScript}/bin/mihomo-boot-start";
         Restart = "on-failure";
         RestartSec = "5s";
-        TimeoutStartSec = "10s";
-        RuntimeDirectory = "mihomo-boot";
-        RuntimeDirectoryMode = "0700";
+        # 60s wait + 启动余量
+        TimeoutStartSec = "90s";
       };
     };
   
