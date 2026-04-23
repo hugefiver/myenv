@@ -24,9 +24,8 @@
     };
     Service = {
       Type = "simple";
-      # 等 DisplayLink 出图稳定，避免 webview 首帧按 0×0 算布局
-      ExecStartPre = "/run/current-system/sw/bin/sleep 5";
-      ExecStart = "/run/current-system/sw/bin/clash-verge";
+      # sleep 在 ExecStart 内执行，systemd fork 即视为启动完成，不阻塞 graphical-session.target
+      ExecStart = "/run/current-system/sw/bin/sh -c 'sleep 5; exec /run/current-system/sw/bin/clash-verge'";
       Restart = "on-failure";
       RestartSec = "5s";
     };
