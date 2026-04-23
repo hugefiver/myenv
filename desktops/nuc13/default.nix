@@ -242,9 +242,12 @@
     # 兜底：事件流异常退出仍未找到设备 → 不设 KWIN_DRM_DEVICES，让 kwin 自行探测
     if [ -z "$_card" ]; then
       _log "WARNING: no display found after event wait, letting kwin auto-detect"
-    # ── 3. KWIN_DRM_DEVICES：目标卡 + iGPU（提供 render node，evdi 无 renderD*） ──
-    elif [ "$_card" != "card0" ] && [ -e /dev/dri/card0 ]; then
-      export KWIN_DRM_DEVICES="/dev/dri/card0:/dev/dri/$_card"
+    # ── 3. KWIN_DRM_DEVICES：iGPU 当 render，选中的卡当 scanout ──
+    # 关键：永远用 udev symlink /dev/dri/intel-igpu 当 render node，不要赌 card 编号。
+    # evdi 启动顺序不固定，有概率 card0 = evdi。evdi 没有 renderD*（虚拟扫描出口、
+    # 没 GPU 单元），单独喂给 kwin 起不来 → SDDM "缩小动画" 后停在最后一帧。
+    elif [ -e /dev/dri/intel-igpu ]; then
+      export KWIN_DRM_DEVICES="/dev/dri/intel-igpu:/dev/dri/$_card"
     else
       export KWIN_DRM_DEVICES="/dev/dri/$_card"
     fi
