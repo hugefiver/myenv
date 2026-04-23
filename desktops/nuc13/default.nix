@@ -218,9 +218,9 @@
       [ "$_w" -gt "$_h" ]
     }
 
-    # ── 查找首选显示卡（决定 SDDM greeter 落点） ──
+    # ── 查找最佳显示卡（所有卡同等对待，只看 connected 状态） ──
     # 优先级：1) 已知序列号  2) 横屏  3) 竖屏
-    _find_primary_card() {
+    _find_best_card() {
       local _dir _conn _card _st _v _edid
       local _first_landscape="" _first_portrait=""
 
@@ -235,7 +235,7 @@
 
         # 1) 已知序列号直接返回
         if [ -s "$_edid" ] && ${grep} -qa "60PZCH3" "$_edid" 2>/dev/null; then
-          _log "primary $_card ($_conn): matched serial 60PZCH3"
+          _log "selected $_card ($_conn): matched serial 60PZCH3"
           echo "$_card"
           return 0
         fi
@@ -249,74 +249,42 @@
       done
 
       if [ -n "$_first_landscape" ]; then
-        _log "primary $_first_landscape: first landscape display"
+        _log "selected $_first_landscape: first landscape display"
         echo "$_first_landscape"; return 0
       fi
       if [ -n "$_first_portrait" ]; then
-        _log "primary $_first_portrait: first portrait display (no landscape found)"
+        _log "selected $_first_portrait: first portrait display (no landscape found)"
         echo "$_first_portrait"; return 0
       fi
       _log "no connected display found"
       return 1
     }
 
-    # ── 列出所有 connected 的 DRM card（去重，alpha 顺序） ──
-    # DisplayLink/evdi 每个 dongle 一张独立 card，必须全部喂给 kwin 才能扫描出口。
-    _find_all_cards() {
-      local _st _v _dir _conn _card _seen=" "
-      for _st in /sys/class/drm/card*-*/status; do
-        [ -f "$_st" ] || continue
-        read -r _v < "$_st" 2>/dev/null
-        [ "$_v" = "connected" ] || continue
-        _dir=$(${dirname} "$_st")
-        _conn=$(${basename} "$_dir")
-        _card="''${_conn%%-*}"
-        case "$_seen" in *" $_card "*) continue ;; esac
-        _seen="$_seen$_card "
-        echo "$_card"
-      done
-    }
-
-    # ── 拼装 KWIN_DRM_DEVICES：intel-igpu(render) : primary : 其余 evdi cards ──
-    _build_kwin_devices() {
-      local _primary="$1" _all="$2" _devs="" _c
-      [ -e /dev/dri/intel-igpu ] && _devs="/dev/dri/intel-igpu"
-      if [ -n "$_primary" ]; then
-        _devs="''${_devs:+$_devs:}/dev/dri/$_primary"
-      fi
-      for _c in $_all; do
-        [ "$_c" = "$_primary" ] && continue
-        _devs="''${_devs:+$_devs:}/dev/dri/$_c"
-      done
-      echo "$_devs"
-    }
-
     # ── 1. 即时检测 ──
-    _primary=$(_find_primary_card)
-    _all=$(_find_all_cards | tr '\n' ' ')
+    _card=$(_find_best_card)
 
     # ── 2. 无显示设备 → 事件驱动等待（非轮询） ──
-    if [ -z "$_primary" ]; then
+    if [ -z "$_card" ]; then
       _log "waiting for DRM device (event-driven)..."
       while IFS= read -r _; do
         sleep 1
         while IFS= read -r -t 0.5 _; do :; done
-        _primary=$(_find_primary_card)
-        _all=$(_find_all_cards | tr '\n' ' ')
-        [ -n "$_primary" ] && break
+        _card=$(_find_best_card)
+        [ -n "$_card" ] && break
       done < <(${udevadm} monitor -s drm -u)
     fi
 
-    # ── 3. KWIN_DRM_DEVICES：iGPU 当 render，所有 connected card 当 scanout ──
+    # 兜底：事件流异常退出仍未找到设备 → 不设 KWIN_DRM_DEVICES，让 kwin 自行探测
+    if [ -z "$_card" ]; then
+      _log "WARNING: no display found after event wait, letting kwin auto-detect"
+    # ── 3. KWIN_DRM_DEVICES：iGPU 当 render，选中的卡当 scanout ──
     # 关键：永远用 udev symlink /dev/dri/intel-igpu 当 render node，不要赌 card 编号。
     # evdi 启动顺序不固定，有概率 card0 = evdi。evdi 没有 renderD*（虚拟扫描出口、
     # 没 GPU 单元），单独喂给 kwin 起不来 → SDDM "缩小动画" 后停在最后一帧。
-    # 多块 DisplayLink dongle = 多张独立 evdi card，必须全部列出，否则 kwin 只看到一个。
-    if [ -z "$_primary" ]; then
-      _log "WARNING: no display found after event wait, letting kwin auto-detect"
+    elif [ -e /dev/dri/intel-igpu ]; then
+      export KWIN_DRM_DEVICES="/dev/dri/intel-igpu:/dev/dri/$_card"
     else
-      KWIN_DRM_DEVICES=$(_build_kwin_devices "$_primary" "$_all")
-      export KWIN_DRM_DEVICES
+      export KWIN_DRM_DEVICES="/dev/dri/$_card"
     fi
     _log "KWIN_DRM_DEVICES=''${KWIN_DRM_DEVICES:-<auto>}"
 
@@ -333,10 +301,7 @@
     _cleanup() { kill "$_KWIN_PID" "$_UDEV_PID" 2>/dev/null; ${rm} -f "$_FIFO"; }
     trap '_cleanup; wait "$_KWIN_PID" 2>/dev/null; exit' TERM INT HUP
 
-    # 监听 primary 或 connected card 集合的任何变化 → 重启 kwin 让
-    # KWIN_DRM_DEVICES 重新枚举（hot-plug 第二张 evdi 也会触发）。
-    _CUR_PRIMARY="$_primary"
-    _CUR_ALL="$_all"
+    _CUR="$_card"
     while true; do
       if ! IFS= read -r -t 5 _; then
         kill -0 "$_KWIN_PID" 2>/dev/null || break
@@ -348,10 +313,9 @@
       sleep 2
       while IFS= read -r -t 0.5 _; do :; done
       kill -0 "$_KWIN_PID" 2>/dev/null || break
-      _new_primary=$(_find_primary_card)
-      _new_all=$(_find_all_cards | tr '\n' ' ')
-      if [ "''${_new_primary:-}" != "$_CUR_PRIMARY" ] || [ "$_new_all" != "$_CUR_ALL" ]; then
-        _log "display set changed: primary=$_CUR_PRIMARY all=[$_CUR_ALL] -> primary=''${_new_primary:-<none>} all=[$_new_all], restarting compositor"
+      _new=$(_find_best_card)
+      if [ "''${_new:-}" != "$_CUR" ]; then
+        _log "display changed: $_CUR -> ''${_new:-<none>}, restarting compositor"
         ${pgrep} -x sddm-greeter-qt6 >/dev/null 2>&1 && kill "$_KWIN_PID"
         break
       fi
