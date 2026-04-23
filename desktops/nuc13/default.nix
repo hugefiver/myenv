@@ -27,7 +27,6 @@
     RuntimeDirectoryMode = lib.mkForce "0755";
     Group = lib.mkForce "users";
   };
-  # 同时覆盖 mihomo 默认名 "Meta" 与 GUI 改后的 "Mihomo"
   networking.firewall = {
     trustedInterfaces = [ "Meta" "Mihomo" ];
     extraReversePathFilterRules = ''
@@ -36,7 +35,6 @@
     allowedUDPPorts = [ 4242 ];  # lan-mouse
   };
 
-  # 用户级 handoff 单元免 sudo 管理
   security.polkit.extraConfig = ''
     polkit.addRule(function(action, subject) {
       if (action.id == "org.freedesktop.systemd1.manage-units" &&
@@ -49,7 +47,7 @@
     });
   '';
 
-  # 登录前透明代理；桌面起来由 mihomo-boot-handoff 同步停止，verge GUI 接管；NAT/路由全交给 mihomo 内部。
+  # SSH 期透明代理；登录桌面后 mihomo-boot-handoff 同步停止，verge 接管
   systemd.services.mihomo-boot =
     let
       vergeDir = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev";
@@ -75,15 +73,13 @@
             sleep 1
           done
 
-          # 仅强制 tun.enable=true（mihomo-boot 必须起 TUN），其余继承 verge profile，
-          # 与 verge GUI 模式行为一致（含 auto-route/auto-redirect/路由排除等）。
           yq '.tun.enable = true' "$VERGE_CFG" > "$RUN_CFG"
 
           mihomo -t -d "$VERGE_DIR" -f "$RUN_CFG"
           exec mihomo -d "$VERGE_DIR" -f "$RUN_CFG"
         '';
       };
-      # 兜底：mihomo SIGKILL/崩溃时清残留；正常 SIGTERM mihomo 自己会清
+      # SIGKILL/崩溃兜底；正常 SIGTERM mihomo 自清
       teardown = pkgs.writeShellApplication {
         name = "mihomo-boot-teardown";
         runtimeInputs = [ pkgs.iproute2 ];
