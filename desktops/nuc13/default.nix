@@ -28,13 +28,9 @@
     RuntimeDirectoryMode = lib.mkForce "0755";
     Group = lib.mkForce "users";
   };
-  # TUN 接口需要 nftables 放通，否则流量被 rpfilter 丢弃。
-  # 设备名由 mihomo 内核决定（不是 GUI「设备名」字段）：
-  #   - 当前实测：`ip -br a` 看到的是 "Meta"（mihomo 默认）
-  #   - GUI 字段虽显示 "Mihomo" 但 service mode 下 IPC 不一定 propagate 到内核
-  #   - nixpkgs programs.clash-verge 模块未暴露接口名选项
-  # 同时放通两个候选名，对齐内核侧 ground truth，避免改名后断网。
-  # https://github.com/NixOS/nixpkgs/issues/477636
+  # TUN 接口需放通 rpfilter，否则流量被丢。
+  # 同时覆盖 mihomo 默认名 "Meta" 与用户在 GUI 改后的 "Mihomo"。
+  # nixpkgs programs.clash-verge 模块未暴露接口名选项，只能两个都列。
   networking.firewall = {
     trustedInterfaces = [ "Meta" "Mihomo" ];
     extraReversePathFilterRules = ''
@@ -43,17 +39,13 @@
     allowedUDPPorts = [ 4242 ];  # lan-mouse
 
     # ── DNS 重定向到 mihomo ────────────────────────────────
-    # 8f5c6ec 把 TUN 路由收窄到 fake-ip /16 后，default 不再进 TUN，
-    # 系统 DNS 查询（指向 8.8.8.8 之类）不会被 mihomo 自动 hijack，
-    # 拿不到 fake-ip → 应用拿到真实 IP → 直连失败。
+    # mihomo-boot 把 TUN 路由收窄到 fake-ip /16 后 default 不再进 TUN，
+    # 系统 DNS（8.8.8.8 之类）不会被 sing-tun 自动 hijack，应用拿到真实 IP →
+    # 不命中 198.18/16 → 不进 TUN → 直连失败。
     #
-    # sing-tun 的 ip rule 设计「prio 9001: not dport 53 lookup main
-    # suppress_prefixlength 0」也明确说明 DNS 必须被 TUN 截到才能正常工作；
-    # 窄路由让这条假设失效，必须显式补一条 DNAT。
-    #
-    # 这里把所有出站 :53 NAT 到 mihomo `127.0.0.1:8853`，让 fake-ip 链路
-    # 回归。fwmark 0x6d6968 是 sing-tun 标记 mihomo 自身上行 DNS 用的，
-    # 必须 RETURN 跳过否则会自循环。
+    # 这里把所有出站 :53 NAT 到 mihomo `127.0.0.1:8853` 补上 fake-ip 链路。
+    # fwmark 0x6d6968 是 sing-tun 给 mihomo 自身上行 DNS 打的 mark，必须
+    # RETURN 跳过否则会自循环。
     extraCommands = ''
       iptables -t nat -F mihomo-dns 2>/dev/null || iptables -t nat -N mihomo-dns
       iptables -t nat -A mihomo-dns -m mark --mark 0x6d6968 -j RETURN
@@ -70,34 +62,18 @@
   };
 
   # ── Boot-time mihomo daemon (handed off to clash-verge after login) ──
-  # 用户登录前就把代理 + TUN 拉起来。读 verge 上一次落盘的运行时 yaml
-  # (clash-verge.yaml)，包含订阅 + Merge.yaml + Script.js 合并后的完整配置。
-  # 登录到 Hyprland 后，autostart.sh 里 `sudo systemctl stop mihomo-boot`
+  # 用户登录前就把 TUN 代理拉起来。读 verge 上次落盘的运行时 yaml
+  # （subscriptions + Merge.yaml + Script.js 合并结果）。
+  # 登录到桌面后 autostart.sh 会 `sudo systemctl stop mihomo-boot`，
   # 让出 TUN / 7890 / 9090，clash-verge GUI 接管自己的 mihomo 实例。
   #
-  # TUN 模式 + 路由收窄到 fake-ip：
-  #   配置基于 verge 写的 yaml，wrapper 用 yq 强制注入
-  #   `tun.inet4-route-address = [198.18.0.0/16]`，让 sing-tun 只把
-  #   fake-ip 段写进策略路由表，不再 hijack `default`。这样：
-  #     - 真实 IP 流量（包括 SSH 入站回包）走 main 表 → wlo1，不进 TUN
-  #     - DNS 查询由上面 `networking.firewall.extraCommands` 的 iptables
-  #       NAT 规则强制重定向到 mihomo `127.0.0.1:8853` → 拿到 fake-ip
-  #       → 命中 198.18/16 → 进 TUN
-  #     - 实现 fake-ip 透明代理，但内核路由表零侵入
+  # wrapper 用 yq 把 `tun.inet4-route-address` 收窄到 fake-ip /16，
+  # default 不再进 TUN → SSH 入站回包走 main → wlo1 不被 hijack。
+  # DNS 链路靠上面 firewall.extraCommands 的 :53 → mihomo NAT 兜底。
   #
-  # ⚠ 前提：verge profile 必须已开 fake-ip
+  # ⚠ 前提：verge profile 必须开 fake-ip
   #   `dns.enhanced-mode: fake-ip` + `dns.fake-ip-range: 198.18.0.1/16`
-  #   且 `dns.listen` 必须是 `127.0.0.1:8853`（与 nat 规则的端口对齐）。
-  #
-  # 启动前等真出口：
-  #   mihomo 用 auto-detect-interface 决定上行接口。NM 还没把 wlo1 拉起来时
-  #   default 路由要么没有要么指向旧 TUN，会让策略路由配错。
-  #   wait-default-route loop 死等"非 Meta/Mihomo 的 default 路由"出现，最多 60s。
-  #
-  # 不卡 boot：
-  #   不依赖 network-online.target（你机器上 NM/networkd wait-online 都禁了）。
-  #   wait loop 超时也会继续启 mihomo（带 Restart=on-failure 兜底），
-  #   不会阻塞其它 unit。
+  #   `dns.listen: 127.0.0.1:8853`（与上面 NAT 端口对齐）
   systemd.services.mihomo-boot =
     let
       vergeDir = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev";
@@ -123,8 +99,7 @@
             sleep 1
           done
 
-          # 强制把 TUN 路由收窄到 fake-ip 段，避免 hijack default 路由表
-          # （verge-mihomo 自带这种行为，上游 mihomo 没有，必须显式注入）
+          # 收窄 TUN 路由到 fake-ip 段，default 留给主路由表（保住 SSH 等入站）
           yq '
             .tun.inet4-route-address = ["198.18.0.0/16"]
             | .tun.inet6-route-address = ["fc00::/18"]
