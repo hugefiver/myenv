@@ -75,17 +75,9 @@
             sleep 1
           done
 
-          # 窄路由（仅 fake-ip 段进 TUN）保 SSH 入站回程不被 TUN 劫持；
-          # auto-redirect 装 nftables 让 DNS/127.0.0.1 走 mihomo 自己处理。
-          yq '
-            .tun.enable = true
-            | .tun.auto-route = true
-            | .tun.auto-redirect = true
-            | .tun.inet4-route-address = ["198.18.0.0/16"]
-            | .tun.inet6-route-address = ["fc00::/18"]
-            | del(.tun.inet4-route-exclude-address)
-            | del(.tun.inet6-route-exclude-address)
-          ' "$VERGE_CFG" > "$RUN_CFG"
+          # 仅强制 tun.enable=true（mihomo-boot 必须起 TUN），其余继承 verge profile，
+          # 与 verge GUI 模式行为一致（含 auto-route/auto-redirect/路由排除等）。
+          yq '.tun.enable = true' "$VERGE_CFG" > "$RUN_CFG"
 
           mihomo -t -d "$VERGE_DIR" -f "$RUN_CFG"
           exec mihomo -d "$VERGE_DIR" -f "$RUN_CFG"
