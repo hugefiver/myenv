@@ -49,11 +49,18 @@
   # 登录到 Hyprland 后，autostart.sh 里 `sudo systemctl stop mihomo-boot`
   # 让出 TUN / 7890 / 9090，clash-verge GUI 接管自己的 mihomo 实例。
   #
-  # TUN 模式同 verge：
-  #   配置原样喂给 mihomo（不再 yq 剥 tun 段）。
-  #   ⚠ 前提：profile 的 Merge.yaml 必须有 LAN 旁路规则
-  #   （IP-CIDR 192.168.0.0/16 / 10.0.0.0/8 / 172.16.0.0/12 -> DIRECT,no-resolve），
-  #   否则远端 SSH 入站回包会被 auto-route 引到 TUN → 黑洞 → 失联。
+  # TUN 模式 + 路由收窄到 fake-ip：
+  #   配置基于 verge 写的 yaml，wrapper 用 yq 强制注入
+  #   `tun.inet4-route-address = [198.18.0.0/16]`，让 sing-tun 只把
+  #   fake-ip 段写进策略路由表，不再 hijack `default`。这样：
+  #     - 真实 IP 流量（包括 SSH 入站回包）走 main 表 → wlo1，不进 TUN
+  #     - 域名解析走 mihomo DNS → 拿到 fake-ip → 命中 198.18/16 → 进 TUN
+  #     - 实现 fake-ip 透明代理，但内核路由表零侵入
+  #
+  # ⚠ 前提：verge profile 必须已开 fake-ip
+  #   `dns.enhanced-mode: fake-ip` + `dns.fake-ip-range: 198.18.0.1/16`
+  #   verge alone 之所以 SSH 没问题，大概率就是 verge-mihomo 在 fake-ip
+  #   下自带这种收窄默认；上游 mihomo 没这层智能，必须显式注入。
   #
   # 启动前等真出口：
   #   mihomo 用 auto-detect-interface 决定上行接口。NM 还没把 wlo1 拉起来时
@@ -70,10 +77,12 @@
       vergeCfg = "${vergeDir}/clash-verge.yaml";
       startScript = pkgs.writeShellApplication {
         name = "mihomo-boot-start";
-        runtimeInputs = [ unstable.mihomo pkgs.iproute2 pkgs.gnugrep ];
+        runtimeInputs = [ unstable.mihomo pkgs.iproute2 pkgs.gnugrep pkgs.yq-go ];
         text = ''
           VERGE_DIR='${vergeDir}'
           VERGE_CFG='${vergeCfg}'
+          RUN_DIR="''${RUNTIME_DIRECTORY:-/run/mihomo-boot}"
+          RUN_CFG="$RUN_DIR/config.yaml"
 
           # 等到出现非-TUN 的 default 路由（NM 起好 wlo1 / eth0），最多 60s
           for i in $(seq 1 60); do
@@ -87,16 +96,25 @@
             sleep 1
           done
 
-          # 校验配置（坏 yaml 直接退出，systemd 5s 后重试）
-          mihomo -t -d "$VERGE_DIR" -f "$VERGE_CFG"
+          # 强制把 TUN 路由收窄到 fake-ip 段，避免 hijack default 路由表
+          # （verge-mihomo 自带这种行为，上游 mihomo 没有，必须显式注入）
+          yq '
+            .tun.inet4-route-address = ["198.18.0.0/16"]
+            | .tun.inet6-route-address = ["fc00::/18"]
+            | del(.tun.inet4-route-exclude-address)
+            | del(.tun.inet6-route-exclude-address)
+          ' "$VERGE_CFG" > "$RUN_CFG"
 
-          echo "[mihomo-boot] starting mihomo (full config incl. TUN)"
-          exec mihomo -d "$VERGE_DIR" -f "$VERGE_CFG"
+          # 校验配置（坏 yaml 直接退出，systemd 5s 后重试）
+          mihomo -t -d "$VERGE_DIR" -f "$RUN_CFG"
+
+          echo "[mihomo-boot] starting mihomo (TUN narrowed to fake-ip range)"
+          exec mihomo -d "$VERGE_DIR" -f "$RUN_CFG"
         '';
       };
     in
     {
-      description = "Mihomo proxy (boot-time, full TUN, handed off to clash-verge after login)";
+      description = "Mihomo proxy (boot-time, fake-ip TUN, handed off to clash-verge after login)";
       wantedBy = [ "multi-user.target" ];
       unitConfig = {
         ConditionPathExists = vergeCfg;
@@ -109,6 +127,8 @@
         RestartSec = "5s";
         # 60s wait + 启动余量
         TimeoutStartSec = "90s";
+        RuntimeDirectory = "mihomo-boot";
+        RuntimeDirectoryMode = "0700";
       };
     };
   
