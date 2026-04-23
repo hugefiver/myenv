@@ -4,6 +4,8 @@
     ./hyprland
     ./kde.nix
 
+    ./clash-verge.nix
+
     ./wezterm.nix
     ./emacs.nix
 

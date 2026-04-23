@@ -28,10 +28,6 @@ case "${BAR_BACKEND:-waybar}" in
 esac
 run_once '^dunst$' dunst
 run_once '^hyprpolkitagent$' hyprpolkitagent
-# 让出 boot 期 mihomo-boot 的 TUN / 7890 / 9090，下面 clash-verge 接管。
-# wheelNeedsPassword=false 已配置，sudo -n 不会卡。
-sudo -n systemctl stop mihomo-boot.service 2>/dev/null || true
-run_once 'clash-verge' clash-verge
 
 if ! pgrep -x awww-daemon >/dev/null 2>&1; then
   awww-daemon >/dev/null 2>&1 &

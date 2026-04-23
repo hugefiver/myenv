@@ -17,63 +17,39 @@
     ./disk.nix
   ];
 
-  # ── Clash Verge Rev (TUN 代理) ────────────────────────────────
   programs.clash-verge = {
     enable = true;
     package = unstable.clash-verge-rev;
-    tunMode = true;       # setcap cap_net_admin
-    serviceMode = true;   # systemd 后台服务
+    tunMode = true;
+    serviceMode = true;
   };
   systemd.services.clash-verge.serviceConfig = {
     RuntimeDirectoryMode = lib.mkForce "0755";
     Group = lib.mkForce "users";
   };
-  # TUN 接口需放通 rpfilter，否则流量被丢。
-  # 同时覆盖 mihomo 默认名 "Meta" 与用户在 GUI 改后的 "Mihomo"。
-  # nixpkgs programs.clash-verge 模块未暴露接口名选项，只能两个都列。
+  # 同时覆盖 mihomo 默认名 "Meta" 与 GUI 改后的 "Mihomo"
   networking.firewall = {
     trustedInterfaces = [ "Meta" "Mihomo" ];
     extraReversePathFilterRules = ''
       iifname { "Meta", "Mihomo" } accept comment "clash-verge TUN"
     '';
     allowedUDPPorts = [ 4242 ];  # lan-mouse
-
-    # ── DNS 重定向到 mihomo ────────────────────────────────
-    # mihomo-boot 把 TUN 路由收窄到 fake-ip /16 后 default 不再进 TUN，
-    # 系统 DNS（8.8.8.8 之类）不会被 sing-tun 自动 hijack，应用拿到真实 IP →
-    # 不命中 198.18/16 → 不进 TUN → 直连失败。
-    #
-    # 这里把所有出站 :53 NAT 到 mihomo `127.0.0.1:8853` 补上 fake-ip 链路。
-    # fwmark 0x6d6968 是 sing-tun 给 mihomo 自身上行 DNS 打的 mark，必须
-    # RETURN 跳过否则会自循环。
-    extraCommands = ''
-      iptables -t nat -F mihomo-dns 2>/dev/null || iptables -t nat -N mihomo-dns
-      iptables -t nat -A mihomo-dns -m mark --mark 0x6d6968 -j RETURN
-      iptables -t nat -A mihomo-dns -d 127.0.0.0/8 -j RETURN
-      iptables -t nat -A mihomo-dns -p udp --dport 53 -j REDIRECT --to-ports 8853
-      iptables -t nat -A mihomo-dns -p tcp --dport 53 -j REDIRECT --to-ports 8853
-      iptables -t nat -C OUTPUT -j mihomo-dns 2>/dev/null || iptables -t nat -A OUTPUT -j mihomo-dns
-    '';
-    extraStopCommands = ''
-      iptables -t nat -D OUTPUT -j mihomo-dns 2>/dev/null || true
-      iptables -t nat -F mihomo-dns 2>/dev/null || true
-      iptables -t nat -X mihomo-dns 2>/dev/null || true
-    '';
   };
 
-  # ── Boot-time mihomo daemon (handed off to clash-verge after login) ──
-  # 用户登录前就把 TUN 代理拉起来。读 verge 上次落盘的运行时 yaml
-  # （subscriptions + Merge.yaml + Script.js 合并结果）。
-  # 登录到桌面后 autostart.sh 会 `sudo systemctl stop mihomo-boot`，
-  # 让出 TUN / 7890 / 9090，clash-verge GUI 接管自己的 mihomo 实例。
-  #
-  # wrapper 用 yq 把 `tun.inet4-route-address` 收窄到 fake-ip /16，
-  # default 不再进 TUN → SSH 入站回包走 main → wlo1 不被 hijack。
-  # DNS 链路靠上面 firewall.extraCommands 的 :53 → mihomo NAT 兜底。
-  #
-  # ⚠ 前提：verge profile 必须开 fake-ip
-  #   `dns.enhanced-mode: fake-ip` + `dns.fake-ip-range: 198.18.0.1/16`
-  #   `dns.listen: 127.0.0.1:8853`（与上面 NAT 端口对齐）
+  # 用户级 handoff 单元免 sudo 管理
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id == "org.freedesktop.systemd1.manage-units" &&
+          subject.user == "hugefiver") {
+        var unit = action.lookup("unit");
+        if (unit == "mihomo-boot.service") {
+          return polkit.Result.YES;
+        }
+      }
+    });
+  '';
+
+  # 登录前透明代理；桌面起来由 mihomo-boot-handoff 同步停止，verge GUI 接管；NAT/路由全交给 mihomo 内部。
   systemd.services.mihomo-boot =
     let
       vergeDir = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev";
@@ -87,7 +63,7 @@
           RUN_DIR="''${RUNTIME_DIRECTORY:-/run/mihomo-boot}"
           RUN_CFG="$RUN_DIR/config.yaml"
 
-          # 等到出现非-TUN 的 default 路由（NM 起好 wlo1 / eth0），最多 60s
+          # 等非-TUN default 路由（最多 60s）
           for i in $(seq 1 60); do
             if ip -4 route show default 2>/dev/null \
                 | grep -E '^default ' \
@@ -99,41 +75,49 @@
             sleep 1
           done
 
-          # 收窄 TUN 路由到 fake-ip 段，default 留给主路由表（保住 SSH 等入站）
+          # 强制 TUN + sing-tun 自管 NAT（auto-redirect），其余交给 verge profile
           yq '
-            .tun.inet4-route-address = ["198.18.0.0/16"]
-            | .tun.inet6-route-address = ["fc00::/18"]
-            | del(.tun.inet4-route-exclude-address)
-            | del(.tun.inet6-route-exclude-address)
+            .tun.enable = true
+            | .tun.auto-route = true
+            | .tun.auto-redirect = true
           ' "$VERGE_CFG" > "$RUN_CFG"
 
-          # 校验配置（坏 yaml 直接退出，systemd 5s 后重试）
           mihomo -t -d "$VERGE_DIR" -f "$RUN_CFG"
-
-          echo "[mihomo-boot] starting mihomo (TUN narrowed to fake-ip range)"
           exec mihomo -d "$VERGE_DIR" -f "$RUN_CFG"
+        '';
+      };
+      # 兜底：mihomo SIGKILL/崩溃时清残留；正常 SIGTERM mihomo 自己会清
+      teardown = pkgs.writeShellApplication {
+        name = "mihomo-boot-teardown";
+        runtimeInputs = [ pkgs.iproute2 ];
+        text = ''
+          ip link del Mihomo 2>/dev/null || true
+          ip link del Meta   2>/dev/null || true
+          for p in 9000 9001 9002 9010; do
+            ip rule del priority "$p" 2>/dev/null || true
+          done
+          ip route flush table 2022 2>/dev/null || true
         '';
       };
     in
     {
-      description = "Mihomo proxy (boot-time, fake-ip TUN, handed off to clash-verge after login)";
+      description = "mihomo (boot-time, handed off to clash-verge GUI after login)";
       wantedBy = [ "multi-user.target" ];
       unitConfig = {
         ConditionPathExists = vergeCfg;
-        StartLimitIntervalSec = 0;  # 无限重试，配合下面 RestartSec=5s
+        StartLimitIntervalSec = 0;
       };
       serviceConfig = {
         Type = "simple";
         ExecStart = "${startScript}/bin/mihomo-boot-start";
+        ExecStopPost = "${teardown}/bin/mihomo-boot-teardown";
         Restart = "on-failure";
         RestartSec = "5s";
-        # 60s wait + 启动余量
         TimeoutStartSec = "90s";
         RuntimeDirectory = "mihomo-boot";
         RuntimeDirectoryMode = "0700";
       };
     };
-  
   boot.kernelPackages = pkgs.linuxPackages_zen;
   boot.kernel.features = {
     gcc-x86_64-v3 = true;
