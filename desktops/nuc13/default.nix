@@ -50,54 +50,32 @@
   # 让出 TUN / 7890 / 9090，clash-verge GUI 接管自己的 mihomo 实例。
   # Restart=no 避免被 stop 后自启反复抢端口。
   #
-  # 兜底策略 (mihomo-boot-start wrapper)：
-  #   1. verge 运行时 yaml 存在且 `mihomo -t` 验证通过 → 用它（首选，全代理）
-  #   2. 否则 fallback 到内置静态 yaml，mode=direct → 不掉线但无代理
-  #      场景：首次部署 / verge 从未跑过 / yaml 损坏 / 订阅刷新写到一半断电
-  #   3. fallback 启动失败也不影响系统其它部分，登录后由 verge 自行接管
+  # 失败策略：宁可不启，不留烂摊子
+  #   - ConditionPathExists 文件不在 → 整个 unit skip（不进 failed），
+  #     首次部署 / verge 从未跑过都会自动跳过，等用户登录后再说
+  #   - ExecStartPre `mihomo -t` 校验通不过 → unit failed，但 mihomo 主体没启动，
+  #     不会留半死不活的 TUN / 抢占端口
   systemd.services.mihomo-boot =
     let
       vergeDir = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev";
-      fallbackCfg = pkgs.writeText "mihomo-boot-fallback.yaml" ''
-        mixed-port: 7890
-        mode: direct
-        log-level: warning
-        external-controller: 127.0.0.1:9090
-        allow-lan: false
-      '';
-      startScript = pkgs.writeShellApplication {
-        name = "mihomo-boot-start";
-        runtimeInputs = [ unstable.mihomo ];
-        text = ''
-          VERGE_DIR='${vergeDir}'
-          VERGE_CFG="$VERGE_DIR/clash-verge.yaml"
-          FALLBACK_DIR=/var/lib/mihomo-boot
-          FALLBACK_CFG='${fallbackCfg}'
-
-          if [ -s "$VERGE_CFG" ] && mihomo -t -d "$VERGE_DIR" -f "$VERGE_CFG" >/dev/null 2>&1; then
-            echo "[mihomo-boot] using clash-verge runtime config"
-            exec mihomo -d "$VERGE_DIR" -f "$VERGE_CFG"
-          fi
-
-          echo "[mihomo-boot] verge config missing or invalid, falling back to direct mode"
-          mkdir -p "$FALLBACK_DIR"
-          exec mihomo -d "$FALLBACK_DIR" -f "$FALLBACK_CFG"
-        '';
-      };
+      vergeCfg = "${vergeDir}/clash-verge.yaml";
     in
     {
       description = "Mihomo proxy (boot-time, handed off to clash-verge after login)";
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
+      unitConfig = {
+        ConditionPathExists = vergeCfg;
+      };
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${startScript}/bin/mihomo-boot-start";
+        ExecStartPre = "${unstable.mihomo}/bin/mihomo -t -d ${vergeDir} -f ${vergeCfg}";
+        ExecStart = "${unstable.mihomo}/bin/mihomo -d ${vergeDir} -f ${vergeCfg}";
         Restart = "no";
         AmbientCapabilities = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_NET_BIND_SERVICE" ];
         CapabilityBoundingSet = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_NET_BIND_SERVICE" ];
         TimeoutStartSec = "15s";
-        StateDirectory = "mihomo-boot";
       };
     };
   
