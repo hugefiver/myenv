@@ -16,6 +16,7 @@
   environment.sessionVariables = {
     KWIN_DRM_PREFER_COLOR_DEPTH = "24";
     KWIN_DRM_NO_DIRECT_SCANOUT = "1";
+    KWIN_DRM_NO_AMS = "1";
   };
 
   # startplasma-wayland 会 source 该目录脚本；静态 displaylink-card 只匹配单张 evdi。

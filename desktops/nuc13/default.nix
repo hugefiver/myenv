@@ -56,7 +56,7 @@
       vergeCfg = "${vergeDir}/clash-verge.yaml";
       startScript = pkgs.writeShellApplication {
         name = "mihomo-boot-start";
-        runtimeInputs = [ unstable.mihomo pkgs.iproute2 pkgs.gnugrep pkgs.yq-go ];
+        runtimeInputs = [ unstable.mihomo pkgs.iproute2 pkgs.nftables pkgs.gnugrep pkgs.yq-go ];
         text = ''
           VERGE_DIR='${vergeDir}'
           VERGE_CFG='${vergeCfg}'
