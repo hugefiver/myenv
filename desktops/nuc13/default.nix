@@ -73,8 +73,6 @@
         ExecStartPre = "${unstable.mihomo}/bin/mihomo -t -d ${vergeDir} -f ${vergeCfg}";
         ExecStart = "${unstable.mihomo}/bin/mihomo -d ${vergeDir} -f ${vergeCfg}";
         Restart = "no";
-        AmbientCapabilities = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_NET_BIND_SERVICE" ];
-        CapabilityBoundingSet = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_NET_BIND_SERVICE" ];
         TimeoutStartSec = "15s";
       };
     };
