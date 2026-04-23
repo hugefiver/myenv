@@ -1,8 +1,6 @@
 { unstable, lib, ... }:
 let
-  # nixpkgs 的 librime 默认 plugins = [ librime-lua librime-octagram ]，
-  # 直接用即可走二进制缓存。早期这里做 .override { plugins = [ librime-lua ]; }
-  # 反而触发本地编译。
+  # nixpkgs 默认 librime 已带 librime-lua / librime-octagram，直接用就走二进制缓存。
   custom-librime = unstable.librime;
   fcitx5-rime-pkg = unstable.fcitx5-rime.override {
     librime = custom-librime;
@@ -54,8 +52,7 @@ in {
     echo "rime-data dir: ${fcitx5-rime-pkg}/share/rime-data"
     ls ${fcitx5-rime-pkg}/share/rime-data/ 2>&1 | head -20 || echo "WARNING: rime-data dir empty or missing!"
 
-    # rime_deployer --build 使用位置参数： user_data_dir [shared_data_dir]
-    # 不是 --shared-data-dir flag！之前误用 flag 导致构建失败。
+    # rime_deployer --build 用位置参数：user_data_dir [shared_data_dir]
     run ${custom-librime}/bin/rime_deployer --build "$RIME_DIR" ${fcitx5-rime-pkg}/share/rime-data || echo "WARNING: rime_deployer failed with exit code $?"
   '';
 
@@ -84,10 +81,9 @@ in {
   # ── RIME 全局配置 ──────────────────────────────────────────────
   xdg.dataFile."fcitx5/rime/default.custom.yaml".text = ''
     patch:
-      # nixpkgs 把 rime-ice 上游的 default.yaml 重命名为 rime_ice_suggestion.yaml
-      # （避免覆盖用户 default.yaml）；rime_ice.schema.yaml 内部
-      # __include: default:/punctuator/full_shape 等条目依赖它，
-      # 不 include 进来 schema 构建会失败：unresolved dependency: Include(default:/punctuator/...)
+      # nixpkgs 把 rime-ice 的 default.yaml 重命名为 rime_ice_suggestion.yaml，
+      # 必须 include 回来，否则 rime_ice.schema.yaml 里 default:/punctuator/...
+      # 等引用解析失败，schema 构建会报 unresolved dependency。
       __include: rime_ice_suggestion:/
       schema_list:
         - schema: rime_ice
@@ -111,8 +107,8 @@ in {
       "switches/@0/reset": 1
 
       # 模糊音 —— 用 /+ 合并操作符追加到 rime_ice 已有 algebra 列表后面。
-      # 注意：不能用 "speller/algebra/@before 0"，那是「插入单条」语法，
-      # 把 list 当 1 条公式塞进去会报 algebra.cc] Error loading formula #1。
+      # （"@before 0" 是单条插入语法，整段 list 灌进去会让 algebra.cc 报
+      # Error loading formula #1。）
       "speller/algebra/+":
         - derive/^([zcs])h/$1/          # zh ch sh → z c s
         - derive/^([zcs])([^h])/$1h$2/  # z c s → zh ch sh

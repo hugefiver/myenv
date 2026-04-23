@@ -32,17 +32,6 @@ run_once '^hyprpolkitagent$' hyprpolkitagent
 # wheelNeedsPassword=false 已配置，sudo -n 不会卡。
 sudo -n systemctl stop mihomo-boot.service 2>/dev/null || true
 run_once 'clash-verge' clash-verge
-# 备选：若 clash-verge 第一次启动 WebKit 渲染异常（界面缺样式），
-# 把上面这行替换成下面的延迟启动块——等 systemd user manager
-# 完整继承 Hyprland session env（含 WEBKIT_DISABLE_DMABUF_RENDERER 等）后再启。
-# (
-#   sleep 3
-#   systemctl --user import-environment \
-#       WAYLAND_DISPLAY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP \
-#       WEBKIT_DISABLE_DMABUF_RENDERER WEBKIT_DISABLE_COMPOSITING_MODE \
-#       2>/dev/null || true
-#   run_once 'clash-verge' clash-verge
-# ) &
 
 if ! pgrep -x awww-daemon >/dev/null 2>&1; then
   awww-daemon >/dev/null 2>&1 &
