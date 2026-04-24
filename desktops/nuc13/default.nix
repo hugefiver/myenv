@@ -73,7 +73,7 @@
             sleep 1
           done
 
-          yq '.tun.enable = true' "$VERGE_CFG" > "$RUN_CFG"
+          yq '.tun.enable = true | .external-controller = "127.0.0.1:9090" | .secret = ""' "$VERGE_CFG" > "$RUN_CFG"
 
           mihomo -t -d "$VERGE_DIR" -f "$RUN_CFG"
           exec mihomo -d "$VERGE_DIR" -f "$RUN_CFG"
