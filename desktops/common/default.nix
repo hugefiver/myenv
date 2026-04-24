@@ -32,6 +32,13 @@
 
   nix.settings.experimental-features = ["nix-command" "flakes"];
 
+  nix.settings.extra-substituters = [
+    "https://hugefiver.cachix.org"
+  ];
+  nix.settings.extra-trusted-public-keys = [
+    "hugefiver.cachix.org-1:vFt540rDhQBn5n+NYG0OkBtae/Rj/Gk12DXUmBDeOM0="
+  ];
+
   boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
 
   boot.loader.systemd-boot.enable = false;
