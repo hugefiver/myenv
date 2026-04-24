@@ -82,22 +82,6 @@
     };
     initContent = ''
       compdef hm=home-manager
-
-      # mihomo external-controller helpers (默认 127.0.0.1:9090)
-      : ''${MIHOMO_API:=http://127.0.0.1:9090}
-      mihomo-list() {
-        curl -s "$MIHOMO_API/proxies" | jq -r 'to_entries[] | select(.value.type=="Selector") | "\(.key) → \(.value.now)"'
-      }
-      mihomo-nodes() {
-        curl -s "$MIHOMO_API/proxies/$1" | jq -r '.all[]'
-      }
-      mihomo-switch() {
-        curl -sX PUT "$MIHOMO_API/proxies/$1" -H 'Content-Type: application/json' -d "{\"name\":\"$2\"}"
-        curl -s "$MIHOMO_API/proxies/$1" | jq -r .now
-      }
-      mihomo-test() {
-        curl -s "$MIHOMO_API/proxies/$1/delay?timeout=3000&url=https://www.gstatic.com/generate_204" | jq
-      }
     '';
     oh-my-zsh = {
       enable = true;
