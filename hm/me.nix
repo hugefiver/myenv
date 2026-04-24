@@ -55,6 +55,7 @@
     git-credential-manager
     firefox
     vscode
+    clashtui
   ];
 
   home.sessionVariables = {
@@ -110,6 +111,21 @@
 
   # Force overwrite if file already exists outside home-manager management
   xdg.configFile."user-dirs.dirs".force = true;
+
+  # clashtui 指向 mihomo-boot 的运行时配置与服务
+  xdg.configFile."clashtui/config.yaml".text = ''
+    basic:
+      clash_config_dir: /home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev
+      clash_bin_path: /run/current-system/sw/bin/mihomo
+      clash_config_path: /run/mihomo-boot/config.yaml
+      timeout: null
+    service:
+      clash_srv_name: mihomo-boot
+      is_user: false
+    extra:
+      edit_cmd: ""
+      open_dir_cmd: ""
+  '';
 
   programs.home-manager = {
     enable = true;
