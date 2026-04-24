@@ -40,22 +40,46 @@ type groupRow struct {
 	typ  string
 }
 
+type pane int
+
+const (
+	paneLeft pane = iota
+	paneRight
+)
+
 type groupsModel struct {
-	cli       *api.Client
-	rows      []groupRow
-	all       map[string]api.Proxy
-	cursor    int
-	inDetail  bool
-	detailGrp string
-	detailIdx int
-	delay     map[string]int
-	loading   bool
-	width     int
-	height    int
+	cli         *api.Client
+	rows        []groupRow
+	all         map[string]api.Proxy
+	leftCursor  int
+	leftScroll  int
+	rightCursor int
+	rightScroll int
+	focus       pane
+	delay       map[string]int
+	width       int
+	height      int
+
+	cfg        *api.Config
+	showGlobal bool
+
+	searching bool
+	search    string
 }
 
 func newGroupsModel(cli *api.Client) *groupsModel {
-	return &groupsModel{cli: cli, delay: map[string]int{}}
+	return &groupsModel{cli: cli, delay: map[string]int{}, focus: paneLeft}
+}
+
+func (m *groupsModel) setConfig(c *api.Config) {
+	m.cfg = c
+}
+
+func (m *groupsModel) helpMode() string {
+	if m.searching {
+		return "search"
+	}
+	return ""
 }
 
 func (m *groupsModel) load() tea.Cmd {
@@ -76,6 +100,20 @@ func isGroupType(t string) bool {
 	return false
 }
 
+func shortType(t string) string {
+	switch t {
+	case "Selector":
+		return "SEL"
+	case "URLTest":
+		return "URL"
+	case "Fallback":
+		return "FBK"
+	case "LoadBalance":
+		return "LB "
+	}
+	return t
+}
+
 func (m *groupsModel) ingest(p map[string]api.Proxy) {
 	m.all = p
 	rows := make([]groupRow, 0, len(p))
@@ -85,21 +123,75 @@ func (m *groupsModel) ingest(p map[string]api.Proxy) {
 		}
 		rows = append(rows, groupRow{name: name, now: pr.Now, typ: pr.Type})
 	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].name < rows[j].name })
+	sort.Slice(rows, func(i, j int) bool {
+		ai, aj := rows[i].name == "GLOBAL", rows[j].name == "GLOBAL"
+		if ai != aj {
+			return aj
+		}
+		return rows[i].name < rows[j].name
+	})
 	m.rows = rows
-	if m.cursor >= len(m.rows) {
-		m.cursor = 0
+	if m.leftCursor >= len(m.visibleRows()) {
+		m.leftCursor = 0
 	}
 }
 
+func (m *groupsModel) hideGlobal() bool {
+	if m.showGlobal {
+		return false
+	}
+	if m.cfg == nil {
+		return false
+	}
+	return strings.EqualFold(m.cfg.Mode, "rule")
+}
+
+func (m *groupsModel) visibleRows() []groupRow {
+	out := make([]groupRow, 0, len(m.rows))
+	hideG := m.hideGlobal()
+	q := strings.ToLower(m.search)
+	for _, r := range m.rows {
+		if hideG && r.name == "GLOBAL" {
+			continue
+		}
+		if q != "" && m.focus == paneLeft {
+			if !strings.Contains(strings.ToLower(r.name), q) {
+				continue
+			}
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
 func (m *groupsModel) currentGroup() *api.Proxy {
-	if m.detailGrp == "" {
+	vr := m.visibleRows()
+	if m.leftCursor >= len(vr) {
 		return nil
 	}
-	if g, ok := m.all[m.detailGrp]; ok {
-		return &g
+	g, ok := m.all[vr[m.leftCursor].name]
+	if !ok {
+		return nil
 	}
-	return nil
+	return &g
+}
+
+func (m *groupsModel) visibleNodes() []string {
+	g := m.currentGroup()
+	if g == nil {
+		return nil
+	}
+	if m.focus == paneRight && m.search != "" {
+		q := strings.ToLower(m.search)
+		out := make([]string, 0, len(g.All))
+		for _, n := range g.All {
+			if strings.Contains(strings.ToLower(n), q) {
+				out = append(out, n)
+			}
+		}
+		return out
+	}
+	return g.All
 }
 
 func (m *groupsModel) selectNode(group, node string) tea.Cmd {
@@ -135,11 +227,15 @@ func (m *groupsModel) testNode(name string) tea.Cmd {
 func (m *groupsModel) Update(msg tea.Msg) (tea.Cmd, string, bool) {
 	switch v := msg.(type) {
 	case proxiesLoadedMsg:
-		m.loading = false
 		if v.err != nil {
 			return nil, "load failed: " + v.err.Error(), true
 		}
 		m.ingest(v.proxies)
+		for _, p := range v.proxies {
+			if n := len(p.History); n > 0 {
+				m.delay[p.Name] = p.History[n-1].Delay
+			}
+		}
 		return nil, "groups loaded", false
 	case selectedMsg:
 		if v.err != nil {
@@ -168,116 +264,299 @@ func (m *groupsModel) Update(msg tea.Msg) (tea.Cmd, string, bool) {
 }
 
 func (m *groupsModel) handleKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
-	if !m.inDetail {
-		switch k.String() {
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(m.rows)-1 {
-				m.cursor++
-			}
-		case "enter":
-			if m.cursor < len(m.rows) {
-				m.detailGrp = m.rows[m.cursor].name
-				m.detailIdx = 0
-				m.inDetail = true
-			}
-		case "r":
-			return m.load(), "refreshing", false
-		}
-		return nil, "", false
-	}
-	g := m.currentGroup()
-	if g == nil {
-		m.inDetail = false
-		return nil, "", false
+	if m.searching {
+		return m.handleSearchKey(k)
 	}
 	switch k.String() {
+	case "tab", "h", "l", "left", "right":
+		if m.focus == paneLeft {
+			m.focus = paneRight
+		} else {
+			m.focus = paneLeft
+		}
+		return nil, "", false
 	case "esc":
-		m.inDetail = false
+		return nil, "", false
+	case "/":
+		m.searching = true
+		m.search = ""
+		return nil, "search:", false
+	case "g":
+		m.showGlobal = !m.showGlobal
+		if m.leftCursor >= len(m.visibleRows()) {
+			m.leftCursor = 0
+		}
+		return nil, "", false
+	case "r":
+		return m.load(), "refreshing", false
+	}
+	if m.focus == paneLeft {
+		return m.handleLeftKey(k)
+	}
+	return m.handleRightKey(k)
+}
+
+func (m *groupsModel) handleSearchKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
+	switch k.String() {
+	case "esc":
+		m.searching = false
+		m.search = ""
+	case "enter":
+		m.searching = false
+	case "backspace":
+		if len(m.search) > 0 {
+			m.search = m.search[:len(m.search)-1]
+		}
+	default:
+		s := k.String()
+		if len(s) == 1 {
+			m.search += s
+		}
+	}
+	return nil, "", false
+}
+
+func (m *groupsModel) handleLeftKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
+	vr := m.visibleRows()
+	switch k.String() {
 	case "up", "k":
-		if m.detailIdx > 0 {
-			m.detailIdx--
+		if m.leftCursor > 0 {
+			m.leftCursor--
 		}
 	case "down", "j":
-		if m.detailIdx < len(g.All)-1 {
-			m.detailIdx++
+		if m.leftCursor < len(vr)-1 {
+			m.leftCursor++
 		}
+	case "home":
+		m.leftCursor = 0
+	case "end":
+		m.leftCursor = len(vr) - 1
 	case "enter":
-		if m.detailIdx < len(g.All) {
-			return m.selectNode(g.Name, g.All[m.detailIdx]), "selecting", false
-		}
+		m.focus = paneRight
+		m.rightCursor = 0
+		m.rightScroll = 0
 	case "t":
-		return m.testGroup(g.Name), "testing group", false
-	case "d":
-		if m.detailIdx < len(g.All) {
-			return m.testNode(g.All[m.detailIdx]), "testing node", false
+		if m.leftCursor < len(vr) {
+			return m.testGroup(vr[m.leftCursor].name), "testing group", false
+		}
+	}
+	return nil, "", false
+}
+
+func (m *groupsModel) handleRightKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
+	g := m.currentGroup()
+	if g == nil {
+		m.focus = paneLeft
+		return nil, "", false
+	}
+	nodes := m.visibleNodes()
+	switch k.String() {
+	case "up", "k":
+		if m.rightCursor > 0 {
+			m.rightCursor--
+		}
+	case "down", "j":
+		if m.rightCursor < len(nodes)-1 {
+			m.rightCursor++
+		}
+	case "home":
+		m.rightCursor = 0
+	case "end":
+		m.rightCursor = len(nodes) - 1
+	case "enter":
+		if m.rightCursor < len(nodes) {
+			return m.selectNode(g.Name, nodes[m.rightCursor]), "selecting", false
+		}
+	case "t", "d":
+		if m.rightCursor < len(nodes) {
+			return m.testNode(nodes[m.rightCursor]), "testing node", false
 		}
 	}
 	return nil, "", false
 }
 
 func (m *groupsModel) View() string {
-	if !m.inDetail {
-		return m.viewList()
-	}
-	return m.viewDetail()
+	header := m.renderHeader()
+	body := m.renderSplit(header)
+	return header + "\n" + body
 }
 
-func (m *groupsModel) viewList() string {
-	if len(m.rows) == 0 {
-		return stMuted.Render("no groups (press r to refresh)")
+func (m *groupsModel) renderHeader() string {
+	mode := "?"
+	tunOn := false
+	if m.cfg != nil {
+		mode = strings.ToLower(m.cfg.Mode)
+		tunOn = m.cfg.Tun.Enable
+	}
+	var modeSt lipgloss.Style
+	switch mode {
+	case "global":
+		modeSt = stWarn
+	case "direct":
+		modeSt = stCyan
+	case "rule":
+		modeSt = stOK
+	default:
+		modeSt = stMuted
+	}
+	tunStr := "off"
+	tunSt := stErr
+	if tunOn {
+		tunStr = "on"
+		tunSt = stOK
+	}
+	parts := []string{
+		stMuted.Render("mode: ") + modeSt.Render(mode),
+		stMuted.Render("tun: ") + tunSt.Render(tunStr),
+		stMuted.Render("groups: ") + stBase.Render(formatInt(len(m.visibleRows()))),
+	}
+	if m.searching || m.search != "" {
+		tag := "/" + m.search
+		if m.searching {
+			tag += "_"
+		}
+		parts = append(parts, stMark.Render(tag))
+	}
+	if !m.showGlobal && m.cfg != nil && strings.EqualFold(m.cfg.Mode, "rule") {
+		parts = append(parts, stMuted.Render("(GLOBAL hidden, g to show)"))
+	}
+	return strings.Join(parts, stMuted.Render("   "))
+}
+
+func (m *groupsModel) renderSplit(header string) string {
+	headerH := lipgloss.Height(header) + 1
+	availH := m.height - headerH
+	if availH < 5 {
+		availH = 5
+	}
+	leftW := m.width * 35 / 100
+	if leftW < 24 {
+		leftW = 24
+	}
+	if leftW > m.width-30 {
+		leftW = m.width - 30
+	}
+	rightW := m.width - leftW - 2
+	if rightW < 20 {
+		rightW = 20
+	}
+	innerH := availH - 2
+	if innerH < 3 {
+		innerH = 3
+	}
+	left := m.renderLeft(leftW-4, innerH)
+	right := m.renderRight(rightW-4, innerH)
+	leftSt := stPane
+	rightSt := stPane
+	if m.focus == paneLeft {
+		leftSt = stPaneA
+	} else {
+		rightSt = stPaneA
+	}
+	leftBox := leftSt.Width(leftW - 2).Height(innerH).Render(left)
+	rightBox := rightSt.Width(rightW - 2).Height(innerH).Render(right)
+	return lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox)
+}
+
+func (m *groupsModel) renderLeft(width, height int) string {
+	vr := m.visibleRows()
+	if len(vr) == 0 {
+		return stMuted.Render("no groups")
+	}
+	m.leftScroll = clampScroll(m.leftCursor, m.leftScroll, height, len(vr))
+	end := m.leftScroll + height
+	if end > len(vr) {
+		end = len(vr)
 	}
 	var b strings.Builder
-	b.WriteString(stTitle.Render("Groups") + "\n\n")
-	for i, r := range m.rows {
+	for i := m.leftScroll; i < end; i++ {
+		r := vr[i]
 		cur := "  "
+		if i == m.leftCursor {
+			cur = stMark.Render("▸ ")
+		}
+		typeTag := stMuted.Render("[" + shortType(r.typ) + "] ")
 		name := r.name
-		if i == m.cursor {
-			cur = stMark.Render("> ")
+		if i == m.leftCursor {
 			name = lipgloss.NewStyle().Bold(true).Render(name)
 		}
-		b.WriteString(cur)
-		b.WriteString(name)
-		b.WriteString(stMuted.Render("  [" + r.typ + "]  → "))
-		b.WriteString(stOK.Render(r.now))
-		b.WriteString("\n")
+		now := stOK.Render(r.now)
+		latency := ""
+		if d, ok := m.delay[r.now]; ok && d > 0 {
+			latency = stMuted.Render("  " + itoaMs(d))
+		}
+		line := cur + typeTag + name + stMuted.Render(" → ") + now + latency
+		b.WriteString(truncWide(line, width) + "\n")
 	}
 	return b.String()
 }
 
-func (m *groupsModel) viewDetail() string {
+func (m *groupsModel) renderRight(width, height int) string {
 	g := m.currentGroup()
 	if g == nil {
-		return stMuted.Render("no group")
+		return stMuted.Render("no group selected")
+	}
+	nodes := m.visibleNodes()
+	title := stTitle.Render(g.Name) + stMuted.Render("  ["+g.Type+"]  current → ") + stOK.Render(g.Now)
+	header := truncWide(title, width)
+	bodyH := height - 2
+	if bodyH < 1 {
+		bodyH = 1
+	}
+	if len(nodes) == 0 {
+		return header + "\n\n" + stMuted.Render("no nodes")
+	}
+	if m.rightCursor >= len(nodes) {
+		m.rightCursor = len(nodes) - 1
+	}
+	m.rightScroll = clampScroll(m.rightCursor, m.rightScroll, bodyH, len(nodes))
+	end := m.rightScroll + bodyH
+	if end > len(nodes) {
+		end = len(nodes)
+	}
+	nameW := width - 28
+	if nameW < 10 {
+		nameW = 10
 	}
 	var b strings.Builder
-	b.WriteString(stTitle.Render("Group: "+g.Name) + stMuted.Render("  ["+g.Type+"]") + "\n")
-	b.WriteString(stMuted.Render("current → ") + stOK.Render(g.Now) + "\n\n")
-	for i, n := range g.All {
+	b.WriteString(header + "\n\n")
+	for i := m.rightScroll; i < end; i++ {
+		n := nodes[i]
 		cur := "  "
-		display := n
-		if i == m.detailIdx {
-			cur = stMark.Render("> ")
-			display = lipgloss.NewStyle().Bold(true).Render(display)
+		if i == m.rightCursor {
+			cur = stMark.Render("▸ ")
 		}
 		marker := "  "
 		if n == g.Now {
 			marker = stOK.Render("● ")
 		}
-		b.WriteString(cur + marker + display)
+		display := n
+		if i == m.rightCursor {
+			display = lipgloss.NewStyle().Bold(true).Render(display)
+		}
+		typ := ""
+		if pr, ok := m.all[n]; ok {
+			typ = pr.Type
+		}
+		latency := ""
 		if d, ok := m.delay[n]; ok {
 			if d <= 0 {
-				b.WriteString(stErr.Render("  timeout"))
+				latency = stErr.Render("timeout")
 			} else {
-				b.WriteString(stMuted.Render("  " + itoaMs(d)))
+				latency = stMuted.Render(itoaMs(d))
 			}
 		}
-		b.WriteString("\n")
+		line := cur + marker + padR(trunc(display, nameW), nameW) + " " + stMuted.Render(padR(trunc(typ, 12), 12)) + " " + latency
+		b.WriteString(truncWide(line, width) + "\n")
 	}
 	return b.String()
+}
+
+func truncWide(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	return lipgloss.NewStyle().Width(w).MaxHeight(1).Inline(true).Render(s)
 }
 
 func itoaMs(d int) string {

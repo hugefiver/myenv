@@ -108,11 +108,22 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch v := msg.(type) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = v.Width, v.Height
-		a.groups.width, a.groups.height = v.Width, v.Height
-		a.proxies.width, a.proxies.height = v.Width, v.Height
-		a.conns.width, a.conns.height = v.Width, v.Height
-		a.logs.width, a.logs.height = v.Width, v.Height
+		bw, bh := a.bodyDims()
+		a.groups.width, a.groups.height = bw, bh
+		a.proxies.width, a.proxies.height = bw, bh
+		a.conns.width, a.conns.height = bw, bh
+		a.logs.width, a.logs.height = bw, bh
+		a.traffic.width, a.traffic.height = bw, bh
+		a.config.width, a.config.height = bw, bh
 		return a, nil
+	case configLoadedMsg:
+		if v.err == nil && v.cfg != nil {
+			a.config.cfg = v.cfg
+			a.groups.setConfig(v.cfg)
+		}
+		if a.active != tabConfig {
+			return a, nil
+		}
 	case tea.KeyMsg:
 		if cmd, handled := a.handleGlobalKey(v); handled {
 			return a, cmd
@@ -123,8 +134,19 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a *App) handleGlobalKey(k tea.KeyMsg) (tea.Cmd, bool) {
+	if a.active == tabGroups && a.groups.searching {
+		return nil, false
+	}
 	switch k.String() {
-	case "ctrl+c", "q":
+	case "ctrl+c":
+		a.conns.stop()
+		a.logs.stop()
+		a.traffic.stop()
+		return tea.Quit, true
+	case "q":
+		if a.active == tabGroups && (a.groups.searching) {
+			return nil, false
+		}
 		a.conns.stop()
 		a.logs.stop()
 		a.traffic.stop()
@@ -141,8 +163,6 @@ func (a *App) handleGlobalKey(k tea.KeyMsg) (tea.Cmd, bool) {
 		return a.switchTab(tabTraffic), true
 	case "6":
 		return a.switchTab(tabConfig), true
-	case "tab":
-		return a.switchTab((a.active + 1) % tabCount), true
 	case "shift+tab":
 		return a.switchTab((a.active + tabCount - 1) % tabCount), true
 	}
@@ -167,6 +187,9 @@ func (a *App) dispatchInner(msg tea.Msg) tea.Cmd {
 	case tabConfig:
 		cmd, status, isErr = a.config.Update(msg)
 	}
+	if cm, ok := msg.(configLoadedMsg); ok && cm.err == nil && cm.cfg != nil {
+		a.groups.setConfig(cm.cfg)
+	}
 	if status != "" {
 		a.status = status
 		a.statusErr = isErr
@@ -174,11 +197,51 @@ func (a *App) dispatchInner(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
+func (a *App) bodyDims() (int, int) {
+	top := renderTabs(a.active, a.width)
+	help := renderHelp(a.width, "x")
+	status := renderStatus(a.width, " ", false)
+	bh := a.height - lipgloss.Height(top) - lipgloss.Height(help) - lipgloss.Height(status)
+	if bh < 1 {
+		bh = 1
+	}
+	bw := a.width - 4
+	if bw < 1 {
+		bw = 1
+	}
+	innerH := bh - 2
+	if innerH < 1 {
+		innerH = 1
+	}
+	return bw, innerH
+}
+
 func (a *App) View() string {
 	if a.width == 0 {
 		return "loading..."
 	}
 	top := renderTabs(a.active, a.width)
+	help := renderHelp(a.width, helpFor(a.active, a.groups.helpMode()))
+	status := renderStatus(a.width, a.status, a.statusErr)
+	bodyHeight := a.height - lipgloss.Height(top) - lipgloss.Height(help) - lipgloss.Height(status)
+	if bodyHeight < 3 {
+		bodyHeight = 3
+	}
+	innerW := a.width - 4
+	if innerW < 1 {
+		innerW = 1
+	}
+	innerH := bodyHeight - 2
+	if innerH < 1 {
+		innerH = 1
+	}
+	a.groups.width, a.groups.height = innerW, innerH
+	a.proxies.width, a.proxies.height = innerW, innerH
+	a.conns.width, a.conns.height = innerW, innerH
+	a.logs.width, a.logs.height = innerW, innerH
+	a.traffic.width, a.traffic.height = innerW, innerH
+	a.config.width, a.config.height = innerW, innerH
+
 	var body string
 	switch a.active {
 	case tabGroups:
@@ -194,13 +257,6 @@ func (a *App) View() string {
 	case tabConfig:
 		body = a.config.View()
 	}
-	detail := a.active == tabGroups && a.groups.inDetail
-	help := renderHelp(a.width, helpFor(a.active, detail))
-	status := renderStatus(a.width, a.status, a.statusErr)
-	bodyHeight := a.height - lipgloss.Height(top) - lipgloss.Height(help) - lipgloss.Height(status)
-	if bodyHeight < 1 {
-		bodyHeight = 1
-	}
-	bodyBox := lipgloss.NewStyle().Width(a.width).Height(bodyHeight).Render(body)
+	bodyBox := stFrame.Width(a.width - 2).Height(bodyHeight - 2).Render(body)
 	return strings.Join([]string{top, bodyBox, status, help}, "\n")
 }

@@ -22,6 +22,8 @@ type trafficModel struct {
 	maxUp   int64
 	maxDn   int64
 	cancel  context.CancelFunc
+	width   int
+	height  int
 }
 
 func newTrafficModel(cli *api.Client) *trafficModel {

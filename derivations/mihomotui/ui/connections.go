@@ -36,7 +36,9 @@ type connsModel struct {
 	prev     map[string]connRow
 	prevTime time.Time
 	cancel   context.CancelFunc
+	cursor   int
 	scroll   int
+	follow   bool
 	upTotal  int64
 	dnTotal  int64
 	width    int
@@ -44,7 +46,7 @@ type connsModel struct {
 }
 
 func newConnsModel(cli *api.Client) *connsModel {
-	return &connsModel{cli: cli, prev: map[string]connRow{}}
+	return &connsModel{cli: cli, prev: map[string]connRow{}, follow: true}
 }
 
 func (m *connsModel) start(send func(tea.Msg)) tea.Cmd {
@@ -118,6 +120,12 @@ func (m *connsModel) ingest(s api.ConnectionsSnapshot) {
 	m.rows = rows
 	m.prev = next
 	m.prevTime = now
+	if m.cursor >= len(m.rows) {
+		m.cursor = len(m.rows) - 1
+		if m.cursor < 0 {
+			m.cursor = 0
+		}
+	}
 }
 
 func (m *connsModel) Update(msg tea.Msg) (tea.Cmd, string, bool) {
@@ -127,18 +135,31 @@ func (m *connsModel) Update(msg tea.Msg) (tea.Cmd, string, bool) {
 			return nil, "conns: " + v.err.Error(), true
 		}
 		m.ingest(v.snap)
+		if m.follow && len(m.rows) > 0 {
+			m.cursor = len(m.rows) - 1
+		}
 	case tea.KeyMsg:
 		switch v.String() {
 		case "up", "k":
-			if m.scroll > 0 {
-				m.scroll--
+			if m.cursor > 0 {
+				m.cursor--
 			}
+			m.follow = false
 		case "down", "j":
-			if m.scroll < m.maxScroll() {
-				m.scroll++
+			if m.cursor < len(m.rows)-1 {
+				m.cursor++
 			}
-		case "g":
-			m.scroll = 0
+			if m.cursor >= len(m.rows)-1 {
+				m.follow = true
+			}
+		case "g", "home":
+			m.cursor = 0
+			m.follow = false
+		case "G", "end":
+			if len(m.rows) > 0 {
+				m.cursor = len(m.rows) - 1
+			}
+			m.follow = true
 		}
 	}
 	return nil, "", false
@@ -146,49 +167,42 @@ func (m *connsModel) Update(msg tea.Msg) (tea.Cmd, string, bool) {
 
 func (m *connsModel) View() string {
 	var b strings.Builder
+	follow := "off"
+	if m.follow {
+		follow = "on"
+	}
 	b.WriteString(stTitle.Render("Connections"))
-	b.WriteString(stMuted.Render("  total ↑" + humanBytes(m.upTotal) + " ↓" + humanBytes(m.dnTotal)))
+	b.WriteString(stMuted.Render("  total ↑" + humanBytes(m.upTotal) + " ↓" + humanBytes(m.dnTotal) + "  follow=" + follow))
 	b.WriteString("\n\n")
 	header := padR("TARGET", 38) + padR("NET", 5) + padR("RULE", 12) + padR("CHAIN", 24) + padR("UP/DN", 16) + "RATE"
 	b.WriteString(stMuted.Render(header) + "\n")
-	max := m.height - 6
-	if max <= 0 {
-		max = 20
+	view := m.height - 4
+	if view <= 0 {
+		view = 1
 	}
-	start := m.scroll
-	if start > len(m.rows) {
-		start = len(m.rows)
-		m.scroll = start
-	}
-	end := start + max
+	m.scroll = clampScroll(m.cursor, m.scroll, view, len(m.rows))
+	end := m.scroll + view
 	if end > len(m.rows) {
 		end = len(m.rows)
 	}
-	for _, r := range m.rows[start:end] {
-		line := padR(trunc(r.target, 37), 38) +
+	for i := m.scroll; i < end; i++ {
+		r := m.rows[i]
+		marker := "  "
+		if i == m.cursor {
+			marker = stMark.Render("▸ ")
+		}
+		line := marker + padR(trunc(r.target, 36), 37) +
 			padR(trunc(r.network, 4), 5) +
 			padR(trunc(r.rule, 11), 12) +
 			padR(trunc(r.chain, 23), 24) +
 			padR("↑"+humanBytes(r.up)+" ↓"+humanBytes(r.down), 16) +
 			"↑" + humanBytes(r.upRate) + "/s ↓" + humanBytes(r.downRate) + "/s"
-		b.WriteString(line + "\n")
+		b.WriteString(truncWide(line, m.width) + "\n")
 	}
 	if len(m.rows) == 0 {
 		b.WriteString(stMuted.Render("no connections"))
 	}
 	return b.String()
-}
-
-func (m *connsModel) maxScroll() int {
-	v := m.height - 6
-	if v < 1 {
-		v = 1
-	}
-	n := len(m.rows) - v
-	if n < 0 {
-		return 0
-	}
-	return n
 }
 
 func padR(s string, n int) string {

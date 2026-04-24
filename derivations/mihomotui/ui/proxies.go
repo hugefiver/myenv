@@ -21,6 +21,7 @@ type proxiesModel struct {
 	cli    *api.Client
 	rows   []proxyRow
 	cursor int
+	scroll int
 	width  int
 	height int
 }
@@ -117,9 +118,15 @@ func (m *proxiesModel) handleKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
 		if m.cursor < len(m.rows)-1 {
 			m.cursor++
 		}
+	case "home", "g":
+		m.cursor = 0
+	case "end", "G":
+		if len(m.rows) > 0 {
+			m.cursor = len(m.rows) - 1
+		}
 	case "r":
 		return m.load(), "refreshing", false
-	case "d":
+	case "d", "t":
 		if m.cursor < len(m.rows) {
 			name := m.rows[m.cursor].name
 			cli := m.cli
@@ -139,23 +146,31 @@ func (m *proxiesModel) View() string {
 		return stMuted.Render("no proxies (press r)")
 	}
 	var b strings.Builder
-	b.WriteString(stTitle.Render("Proxies") + "  " + stMuted.Render("(d=test, r=refresh)") + "\n\n")
-	for i, r := range m.rows {
+	b.WriteString(stTitle.Render("Proxies") + "  " + stMuted.Render("(d/t test, r refresh)") + "\n\n")
+	view := m.height - 3
+	if view < 1 {
+		view = 1
+	}
+	m.scroll = clampScroll(m.cursor, m.scroll, view, len(m.rows))
+	end := m.scroll + view
+	if end > len(m.rows) {
+		end = len(m.rows)
+	}
+	for i := m.scroll; i < end; i++ {
+		r := m.rows[i]
 		cur := "  "
 		name := r.name
 		if i == m.cursor {
-			cur = stMark.Render("> ")
+			cur = stMark.Render("▸ ")
 			name = lipgloss.NewStyle().Bold(true).Render(name)
 		}
-		b.WriteString(cur)
-		b.WriteString(name)
-		b.WriteString(stMuted.Render("  [" + r.typ + "]"))
+		line := cur + name + stMuted.Render("  ["+r.typ+"]")
 		if r.delay > 0 {
-			b.WriteString(stMuted.Render("  " + itoaMs(r.delay)))
+			line += stMuted.Render("  " + itoaMs(r.delay))
 		} else if r.delay < 0 {
-			b.WriteString(stErr.Render("  timeout"))
+			line += stErr.Render("  timeout")
 		}
-		b.WriteString("\n")
+		b.WriteString(truncWide(line, m.width) + "\n")
 	}
 	return b.String()
 }

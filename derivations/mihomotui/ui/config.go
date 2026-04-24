@@ -26,8 +26,10 @@ type restartMsg struct {
 }
 
 type configModel struct {
-	cli *api.Client
-	cfg *api.Config
+	cli    *api.Client
+	cfg    *api.Config
+	width  int
+	height int
 }
 
 func newConfigModel(cli *api.Client) *configModel {
