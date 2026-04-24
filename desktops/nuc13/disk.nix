@@ -89,6 +89,7 @@ in {
               subvolumes = {
                 "@root" = {
                   mountpoint = "/";
+                  mountOptions = [ "user_subvol_rm_allowed" ];
                 };
                 "@nix" = {
                   mountpoint = "/nix";
