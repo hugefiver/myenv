@@ -128,6 +128,12 @@
   # Hyprland 会话下作为蓝牙 UI 入口；KDE 会话仍走 bluedevil。
   services.blueman.enable = true;
 
+  # netbird daemon；登录与配置由用户手动 `netbird up` / `netbird login` 管理
+  services.netbird = {
+    enable = true;
+    package = unstable.netbird;
+  };
+
   networking.hostName = "desktop-nuc13";
   # NetworkManager 全权管理网络，scripted backend 不需要管任何接口。
   # networking.useDHCP = false 仅关闭全局默认；但 nixos-facter 会为
