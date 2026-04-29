@@ -28,9 +28,9 @@
     Group = lib.mkForce "users";
   };
   networking.firewall = {
-    trustedInterfaces = [ "Meta" "Mihomo" ];
+    trustedInterfaces = [ "Meta" "Mihomo" "MihomoBoot" ];
     extraReversePathFilterRules = ''
-      iifname { "Meta", "Mihomo" } accept comment "clash-verge TUN"
+      iifname { "Meta", "Mihomo", "MihomoBoot" } accept comment "mihomo TUN"
     '';
     allowedUDPPorts = [ 4242 ];  # lan-mouse
   };
@@ -52,9 +52,12 @@
     let
       vergeDir = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev";
       vergeCfg = "${vergeDir}/clash-verge.yaml";
+      bootDevice = "MihomoBoot";
+      bootTable = "12022";
+      bootRule = "9200";
       startScript = pkgs.writeShellApplication {
         name = "mihomo-boot-start";
-        runtimeInputs = [ unstable.mihomo pkgs.iproute2 pkgs.nftables pkgs.gnugrep pkgs.yq-go ];
+        runtimeInputs = [ unstable.mihomo pkgs.coreutils pkgs.iproute2 pkgs.nftables pkgs.procps pkgs.gnugrep pkgs.yq-go ];
         text = ''
           VERGE_DIR='${vergeDir}'
           VERGE_CFG='${vergeCfg}'
@@ -65,7 +68,7 @@
           for i in $(seq 1 60); do
             if ip -4 route show default 2>/dev/null \
                 | grep -E '^default ' \
-                | grep -vE 'dev (Meta|Mihomo)' \
+                | grep -vE 'dev (Meta|Mihomo|${bootDevice})' \
                 | grep -q .; then
               echo "[mihomo-boot] default route ready after ''${i}s"
               break
@@ -73,12 +76,66 @@
             sleep 1
           done
 
-          yq '.tun.enable = true
-            | .tun.auto-route = true
-            | .tun.auto-redirect = true
-            | .tun.route-exclude-address = ["192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12", "169.254.0.0/16"]
-            | .external-controller = "127.0.0.1:9090"
-            | .secret = ""' "$VERGE_CFG" > "$RUN_CFG"
+          LAN_EXCLUDES=$(ip -4 route show scope link 2>/dev/null \
+            | grep -vE 'dev (Meta|Mihomo|${bootDevice})' \
+            | while read -r dst _; do
+                case "$dst" in
+                  default|198.18.*) ;;
+                  *) printf '"%s",' "$dst" ;;
+                esac
+              done)
+          ROUTE_EXCLUDES='["192.168.0.0/16","10.0.0.0/8","172.16.0.0/12","169.254.0.0/16","100.64.0.0/10","fc00::/7","fe80::/10"]'
+          if [ -n "$LAN_EXCLUDES" ]; then
+            ROUTE_EXCLUDES="[''${LAN_EXCLUDES%,},\"192.168.0.0/16\",\"10.0.0.0/8\",\"172.16.0.0/12\",\"169.254.0.0/16\",\"100.64.0.0/10\",\"fc00::/7\",\"fe80::/10\"]"
+          fi
+          export ROUTE_EXCLUDES
+
+          for i in $(seq 1 15); do
+            if ! pgrep -f 'verge-mihomo' >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$i" -eq 15 ]; then
+              echo "[mihomo-boot] clash-verge core still running; skip boot core"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          if ip link show ${bootDevice} >/dev/null 2>&1 || ip link show Mihomo >/dev/null 2>&1 || ip link show Meta >/dev/null 2>&1; then
+            ip link del ${bootDevice} 2>/dev/null || true
+            for p in ${bootRule} $(( ${bootRule} + 1 )) $(( ${bootRule} + 2 )) $(( ${bootRule} + 10 )); do
+              ip rule del priority "$p" 2>/dev/null || true
+            done
+            ip route flush table ${bootTable} 2>/dev/null || true
+          fi
+
+          yq '
+            .tun.enable = true |
+            .tun.device = "${bootDevice}" |
+            .tun.stack = "gvisor" |
+            .tun.auto-route = true |
+            .tun.auto-redirect = true |
+            .tun.auto-detect-interface = true |
+            .tun.dns-hijack = ["any:53"] |
+            .tun.strict-route = false |
+            .tun.iproute2-table-index = ${bootTable} |
+            .tun.iproute2-rule-index = ${bootRule} |
+            .tun.route-exclude-address = (strenv(ROUTE_EXCLUDES) | from_yaml) |
+            .dns.enable = true |
+            .dns.listen = "127.0.0.1:8854" |
+            .dns.enhanced-mode = "fake-ip" |
+            .dns.fake-ip-range = "198.18.0.1/16" |
+            .port = 0 |
+            .socks-port = 0 |
+            .mixed-port = 0 |
+            .redir-port = 0 |
+            .tproxy-port = 0 |
+            .external-controller = "127.0.0.1:9090" |
+            .external-controller-unix = "" |
+            .secret = "" |
+            del(.external-controller-pipe) |
+            del(.external-controller-tls)
+          ' "$VERGE_CFG" > "$RUN_CFG"
 
           mihomo -t -d "$VERGE_DIR" -f "$RUN_CFG"
           exec mihomo -d "$VERGE_DIR" -f "$RUN_CFG"
@@ -89,12 +146,11 @@
         name = "mihomo-boot-teardown";
         runtimeInputs = [ pkgs.iproute2 ];
         text = ''
-          ip link del Mihomo 2>/dev/null || true
-          ip link del Meta   2>/dev/null || true
-          for p in 9000 9001 9002 9010; do
+          ip link del ${bootDevice} 2>/dev/null || true
+          for p in ${bootRule} $(( ${bootRule} + 1 )) $(( ${bootRule} + 2 )) $(( ${bootRule} + 10 )); do
             ip rule del priority "$p" 2>/dev/null || true
           done
-          ip route flush table 2022 2>/dev/null || true
+          ip route flush table ${bootTable} 2>/dev/null || true
         '';
       };
     in
@@ -109,8 +165,7 @@
         Type = "simple";
         ExecStart = "${startScript}/bin/mihomo-boot-start";
         ExecStopPost = "${teardown}/bin/mihomo-boot-teardown";
-        Restart = "on-failure";
-        RestartSec = "5s";
+        Restart = "no";
         TimeoutStartSec = "90s";
         RuntimeDirectory = "mihomo-boot";
         RuntimeDirectoryMode = "0700";
