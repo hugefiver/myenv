@@ -6,14 +6,13 @@
   ...
 }: let
   uwsm = lib.getExe pkgs.uwsm;
-  hyprlandPackage = unstable.hyprland.overrideAttrs (old: {
-    postInstall =
-      (old.postInstall or "")
-      + ''
-        substituteInPlace $out/share/wayland-sessions/hyprland.desktop \
-          --replace-fail "Exec=Hyprland" "Exec=${uwsm} start -eD Hyprland -F -- $out/bin/start-hyprland"
-      '';
-  });
+  hyprlandSession = pkgs.writeTextDir "share/wayland-sessions/hyprland.desktop" ''
+    [Desktop Entry]
+    Name=Hyprland
+    Comment=Hyprland compositor
+    Exec=${uwsm} start -eD Hyprland -F -- ${unstable.hyprland}/bin/start-hyprland
+    Type=Application
+  '';
 in {
   services.displayManager.sddm = {
     enable = true;
@@ -22,7 +21,7 @@ in {
 
   programs.hyprland = {
     enable = true;
-    package = hyprlandPackage;
+    package = unstable.hyprland;
     portalPackage = unstable.xdg-desktop-portal-hyprland;
     withUWSM = true;
     xwayland.enable = true;
@@ -43,6 +42,7 @@ in {
         Type=Application
       '';
   in [
+    (hyprlandSession.overrideAttrs {passthru.providedSessions = ["hyprland"];})
     (qs-session.overrideAttrs {passthru.providedSessions = ["hyprland-quickshell"];})
   ];
 
