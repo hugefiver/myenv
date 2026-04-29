@@ -1,4 +1,20 @@
-{self, lib, pkgs, unstable, ...} : {
+{
+  self,
+  lib,
+  pkgs,
+  unstable,
+  ...
+}: let
+  uwsm = lib.getExe pkgs.uwsm;
+  hyprlandPackage = unstable.hyprland.overrideAttrs (old: {
+    postInstall =
+      (old.postInstall or "")
+      + ''
+        substituteInPlace $out/share/wayland-sessions/hyprland.desktop \
+          --replace-fail "Exec=Hyprland" "Exec=${uwsm} start -eD Hyprland -F -- $out/bin/start-hyprland"
+      '';
+  });
+in {
   services.displayManager.sddm = {
     enable = true;
     wayland.enable = true;
@@ -6,16 +22,19 @@
 
   programs.hyprland = {
     enable = true;
-    package = unstable.hyprland;
+    package = hyprlandPackage;
     portalPackage = unstable.xdg-desktop-portal-hyprland;
-    withUWSM = true; 
+    withUWSM = true;
     xwayland.enable = true;
   };
 
   # SDDM 会话入口：Hyprland (QuickShell)
-  # 通过 env 设置 BAR_BACKEND，UWSM 会继承给 Hyprland → autostart.sh
+  # 通过 env 设置 BAR_BACKEND，UWSM 会继承给 Hyprland → autostart.sh。
+  # QuickShell 入口保留独立 BAR_BACKEND；普通 Hyprland 入口由上面的 package
+  # override 修正为 start-hyprland。
   services.displayManager.sessionPackages = let
-    qs-session = pkgs.writeTextDir
+    qs-session =
+      pkgs.writeTextDir
       "share/wayland-sessions/hyprland-quickshell.desktop" ''
         [Desktop Entry]
         Name=Hyprland (QuickShell)
@@ -24,7 +43,7 @@
         Type=Application
       '';
   in [
-    (qs-session.overrideAttrs { passthru.providedSessions = [ "hyprland-quickshell" ]; })
+    (qs-session.overrideAttrs {passthru.providedSessions = ["hyprland-quickshell"];})
   ];
 
   security.pam.services.hyprlock = {};
