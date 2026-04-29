@@ -73,7 +73,12 @@
             sleep 1
           done
 
-          yq '.tun.enable = true | .external-controller = "127.0.0.1:9090" | .secret = ""' "$VERGE_CFG" > "$RUN_CFG"
+          yq '.tun.enable = true
+            | .tun.auto-route = true
+            | .tun.auto-redirect = true
+            | .tun.route-exclude-address = ["192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12", "169.254.0.0/16"]
+            | .external-controller = "127.0.0.1:9090"
+            | .secret = ""' "$VERGE_CFG" > "$RUN_CFG"
 
           mihomo -t -d "$VERGE_DIR" -f "$RUN_CFG"
           exec mihomo -d "$VERGE_DIR" -f "$RUN_CFG"
