@@ -171,7 +171,7 @@
         RuntimeDirectoryMode = "0700";
       };
     };
-  boot.kernelPackages = pkgs.linuxPackages_zen;
+  boot.kernelPackages = unstable.linuxPackages_zen;
   boot.kernel.features = {
     gcc-x86_64-v3 = true;
   };
