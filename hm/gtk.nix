@@ -1,4 +1,4 @@
-{ unstable, config, ... }: {
+{ pkgs, unstable, config, ... }: {
   gtk = {
     enable = true;
     theme = {
@@ -15,4 +15,15 @@
       size = 11;
     };
   };
+
+  qt = {
+    enable = true;
+    platformTheme.name = "gtk";
+  };
+
+  home.packages = with pkgs; [
+    adwaita-icon-theme
+    hicolor-icon-theme
+    kdePackages.breeze-icons
+  ];
 }
