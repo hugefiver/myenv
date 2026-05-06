@@ -80,4 +80,28 @@ cat > "$IMG" << 'SVGEOF'
 SVGEOF
 fi
 
-exec swayimg --class=hypr-cheatsheet "$IMG"
+MON_W=1600
+MON_H=900
+
+if command -v hyprctl >/dev/null && command -v jq >/dev/null; then
+  INFO=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused) | "\(.width) \(.height)"' 2>/dev/null)
+  if [ -n "$INFO" ]; then
+    read -r MON_W MON_H <<< "$INFO"
+  fi
+fi
+
+MON_W=${MON_W:-1600}
+MON_H=${MON_H:-900}
+
+MAX_W=$((MON_W * 75 / 100))
+MAX_H=$((MON_H * 75 / 100))
+
+TARGET_W=$MAX_W
+TARGET_H=$((TARGET_W * 640 / 1600))
+
+if [ "$TARGET_H" -gt "$MAX_H" ]; then
+  TARGET_H=$MAX_H
+  TARGET_W=$((TARGET_H * 1600 / 640))
+fi
+
+exec hyprctl dispatch exec "[float; size ${TARGET_W} ${TARGET_H}; center; pin] swayimg --class=hypr-cheatsheet \"$IMG\""
