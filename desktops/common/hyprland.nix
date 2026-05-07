@@ -27,23 +27,9 @@ in {
     xwayland.enable = true;
   };
 
-  # SDDM 会话入口：Hyprland (QuickShell)
-  # 通过 env 设置 BAR_BACKEND，UWSM 会继承给 Hyprland → autostart.sh。
-  # QuickShell 入口保留独立 BAR_BACKEND；普通 Hyprland 入口由上面的 package
-  # override 修正为 start-hyprland。
-  services.displayManager.sessionPackages = let
-    qs-session =
-      pkgs.writeTextDir
-      "share/wayland-sessions/hyprland-quickshell.desktop" ''
-        [Desktop Entry]
-        Name=Hyprland (QuickShell)
-        Comment=Hyprland with QuickShell status bar
-        Exec=env BAR_BACKEND=quickshell uwsm start -S hyprland
-        Type=Application
-      '';
-  in [
+  # QuickShell 入口已知无法启动，暂不作为 SDDM 可选会话暴露。
+  services.displayManager.sessionPackages = [
     (hyprlandSession.overrideAttrs {passthru.providedSessions = ["hyprland"];})
-    (qs-session.overrideAttrs {passthru.providedSessions = ["hyprland-quickshell"];})
   ];
 
   security.pam.services.hyprlock = {};
