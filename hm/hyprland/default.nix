@@ -1,4 +1,212 @@
-{ pkgs, unstable, ... }: {
+{ pkgs, unstable, ... }: let
+  wayleConfig = (pkgs.formats.toml {}).generate "wayle-config.toml" {
+    general = {
+      "font-sans" = "Noto Sans";
+      "font-mono" = "CaskaydiaCove Nerd Font Mono";
+    };
+
+    bar = {
+      location = "top";
+      scale = 1.0;
+      "inset-edge" = 6.0;
+      "inset-ends" = 8.0;
+      padding = 0.0;
+      "padding-ends" = 0.0;
+      "module-gap" = 0.25;
+      bg = "bg-surface";
+      "background-opacity" = 0;
+      "border-location" = "none";
+      rounding = "none";
+      shadow = "none";
+      "button-variant" = "block-prefix";
+      "button-bg-opacity" = 78;
+      "button-icon-size" = 1.0;
+      "button-label-size" = 1.0;
+      "button-label-weight" = "semibold";
+      "button-rounding" = "full";
+      "button-border-location" = "all";
+      "button-border-width" = 1;
+      "button-group-background" = "bg-surface";
+      "button-group-opacity" = 78;
+      "button-group-border-color" = "border-accent";
+      "button-group-rounding" = "full";
+      "dropdown-shadow" = true;
+      "dropdown-opacity" = 100;
+      "dropdown-autohide" = true;
+      "dropdown-freeze-label" = true;
+
+      layout = [
+        {
+          monitor = "DVI-I-1";
+          show = true;
+          left = [
+            "custom-launcher"
+            "hyprland-workspaces"
+            "window-title"
+          ];
+          center = [
+            "media"
+            "clock"
+          ];
+          right = [
+            { name = "hardware"; modules = [ "cpu" "ram" "custom-temperature" ]; }
+            { name = "status"; modules = [ "volume" "network" "battery" ]; }
+            "bluetooth"
+            "systray"
+            "custom-power"
+          ];
+        }
+        {
+          monitor = "DVI-I-2";
+          show = true;
+          left = [ "hyprland-workspaces" ];
+          center = [];
+          right = [];
+        }
+      ];
+    };
+
+    styling = {
+      scale = 1.0;
+      rounding = "sm";
+      "theme-provider" = "wayle";
+      palette = {
+        bg = "#141420";
+        surface = "#2a2520";
+        elevated = "#332d26";
+        fg = "#e6ddd4";
+        "fg-muted" = "#968b80";
+        primary = "#dba86b";
+        red = "#f28b82";
+        yellow = "#dba86b";
+        green = "#98bb6c";
+        blue = "#7fb4ca";
+      };
+    };
+
+    modules = {
+      custom = [
+        {
+          id = "launcher";
+          "icon-name" = "tb-grid-dots-symbolic";
+          "icon-show" = true;
+          "label-show" = false;
+          "icon-bg-color" = "yellow";
+          "left-click" = "~/.config/hypr/scripts/rofi-launcher.sh";
+        }
+        {
+          id = "temperature";
+          command = ''
+            for f in /sys/devices/platform/coretemp.0/hwmon/hwmon*/temp1_input; do
+              [ -r "$f" ] && awk '{printf "%d°C\\n", $1 / 1000}' "$f" && exit
+            done
+            echo "--°C"
+          '';
+          "interval-ms" = 5000;
+          "icon-name" = "ld-thermometer-symbolic";
+          "icon-bg-color" = "green";
+          "label-color" = "green";
+        }
+        {
+          id = "power";
+          "icon-name" = "ld-power-symbolic";
+          "icon-show" = true;
+          "label-show" = false;
+          "icon-bg-color" = "red";
+          "left-click" = "~/.config/hypr/scripts/power-menu.sh";
+        }
+      ];
+
+      "hyprland-workspaces" = {
+        "monitor-specific" = true;
+        "show-special" = true;
+        "display-mode" = "label";
+        "label-use-name" = true;
+        numbering = "absolute";
+        "active-indicator" = "background";
+        "active-color" = "yellow";
+        "occupied-color" = "fg-muted";
+        "empty-color" = "fg-subtle";
+        "container-bg-color" = "bg-surface-elevated";
+      };
+
+      "window-title" = {
+        format = "{{ title }}";
+        "label-max-length" = 48;
+        "icon-show" = false;
+        "label-color" = "fg-muted";
+      };
+
+      clock = {
+        format = "%m月%d日 %H:%M %a";
+        "icon-name" = "tb-calendar-time-symbolic";
+        "icon-bg-color" = "yellow";
+        "label-color" = "fg";
+        "left-click" = "dropdown:calendar";
+        "right-click" = "dropdown:weather";
+      };
+
+      cpu = {
+        "poll-interval-ms" = 3000;
+        format = "{{ percent }}%";
+        "icon-name" = "ld-cpu-symbolic";
+        "icon-bg-color" = "blue";
+        "label-color" = "blue";
+      };
+
+      ram = {
+        "poll-interval-ms" = 5000;
+        format = "{{ percent }}%";
+        "icon-bg-color" = "red";
+        "label-color" = "red";
+      };
+
+      media = {
+        format = "{{ title }} - {{ artist }}";
+        "label-max-length" = 36;
+        "left-click" = "dropdown:media";
+      };
+
+      volume = {
+        format = "{{ percent }}%";
+        "left-click" = "dropdown:audio";
+        "middle-click" = "wayle audio output-mute";
+        "icon-bg-color" = "green";
+        "label-color" = "green";
+      };
+
+      network = {
+        "label-max-length" = 15;
+        "left-click" = "dropdown:network";
+        "icon-bg-color" = "green";
+        "label-color" = "green";
+      };
+
+      battery = {
+        format = "{{ percent }}%";
+        "left-click" = "dropdown:battery";
+        "icon-bg-color" = "yellow";
+        "label-color" = "yellow";
+      };
+
+      bluetooth = {
+        "label-max-length" = 15;
+        "left-click" = "dropdown:bluetooth";
+        "icon-bg-color" = "blue";
+        "label-color" = "blue";
+      };
+
+      systray = {
+        "icon-scale" = 1.0;
+        "item-gap" = 0.25;
+        "internal-padding" = 0.5;
+      };
+    };
+
+    osd.enabled = true;
+    wallpaper."engine-enabled" = false;
+  };
+in {
   home.packages = with unstable; [
     brightnessctl
     cliphist
@@ -24,6 +232,7 @@
     quickshell
     swayimg
     awww  # swww 已 archived 改名 awww（codeberg.org/LGFae/awww）
+    wayle
     waybar
     wf-recorder        # 轻量 Wayland 录屏，支持 slurp 区域选择
     wlr-randr
@@ -108,6 +317,7 @@
     [viewer]
     scale = fit
   '';
+  xdg.configFile."wayle/config.toml".source = wayleConfig;
   xdg.configFile."waybar/config".source = ./waybar/config;
   xdg.configFile."waybar/style.css".source = ./waybar/style.css;
   xdg.configFile."quickshell" = { source = ./quickshell; recursive = true; };

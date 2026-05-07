@@ -22,9 +22,12 @@ dbus-update-activation-environment --systemd --all >/dev/null 2>&1 || true
 run_once 'kwalletd[56]' kwalletd6
 
 run_once '^hypridle$' hypridle
-case "${BAR_BACKEND:-waybar}" in
-  quickshell) run_once '^quickshell$' quickshell ;;
-  *)          run_once '^waybar$' waybar ;;
+case "${BAR_BACKEND:-wayle}" in
+  waybar) run_once '^waybar$' waybar ;;
+  # QuickShell 当前已知无法启动；即使环境变量仍传入，也回退到 Waybar。
+  quickshell) run_once '^waybar$' waybar ;;
+  wayle) run_once 'wayle.*shell' wayle shell ;;
+  *)          run_once 'wayle.*shell' wayle shell ;;
 esac
 run_once '^dunst$' dunst
 run_once '^hyprpolkitagent$' hyprpolkitagent
@@ -80,6 +83,6 @@ fi
   fi
 ) >/dev/null 2>&1 &
 
-if [ "${BAR_BACKEND:-waybar}" = "waybar" ]; then
+if [ "${BAR_BACKEND:-wayle}" = "waybar" ] || [ "${BAR_BACKEND:-wayle}" = "quickshell" ]; then
   run_once 'waybar-autohide' ~/.config/hypr/scripts/waybar-autohide.sh
 fi
