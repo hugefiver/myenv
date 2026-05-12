@@ -12,6 +12,7 @@
     Comment=Hyprland compositor
     Exec=${uwsm} start -eD Hyprland -F -- ${unstable.hyprland}/bin/start-hyprland
     Type=Application
+    DesktopNames=Hyprland
   '';
 in {
   services.displayManager.sddm = {
