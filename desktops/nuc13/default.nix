@@ -336,18 +336,25 @@ QML
     pgrep = "${pkgs.procps}/bin/pgrep";
     jq = "${pkgs.jq}/bin/jq";
     seq = "${pkgs.coreutils}/bin/seq";
+    kscreenDoctor = lib.getExe' pkgs.kdePackages.libkscreen "kscreen-doctor";
+    swayidle = "${pkgs.swayidle}/bin/swayidle";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
     _log() { echo "[sddm-compositor] $*" >&2; }
     _RUNTIME_DIR="''${XDG_RUNTIME_DIR:-/var/run/sddm}"
+    export XDG_RUNTIME_DIR="$_RUNTIME_DIR"
+    export WAYLAND_DISPLAY="''${WAYLAND_DISPLAY:-wayland-0}"
     _FIFO_DIR=$(${mktemp} -d "$_RUNTIME_DIR/sddm-drm-monitor.XXXXXX") || { _log "ERROR: failed to create DRM monitor directory in $_RUNTIME_DIR"; exit 1; }
     _FIFO="$_FIFO_DIR/events"
     _KWIN_PID=""
     _UDEV_PID=""
     _KSCREEN_PID=""
+    _IDLE_PID=""
     _cleanup() {
       trap - EXIT
+      [ -n "''${_IDLE_PID:-}" ] && kill "$_IDLE_PID" 2>/dev/null
       [ -n "''${_KSCREEN_PID:-}" ] && kill "$_KSCREEN_PID" 2>/dev/null
+      [ -n "''${_KWIN_PID:-}" ] && ${kscreenDoctor} --dpms on >/dev/null 2>&1
       [ -n "''${_UDEV_PID:-}" ] && kill "$_UDEV_PID" 2>/dev/null
       [ -n "''${_KWIN_PID:-}" ] && kill "$_KWIN_PID" 2>/dev/null
       [ -n "''${_FIFO_DIR:-}" ] && ${rm} -rf "$_FIFO_DIR"
@@ -456,13 +463,33 @@ QML
 
     trap '_cleanup; wait "$_KWIN_PID" 2>/dev/null; exit' TERM INT HUP
 
-    # ── 4.5 Force DisplayLink greeter output to 1080p30 when KWin is ready ──
+    # ── 4.5 SDDM greeter idle blanking: DPMS off after 60s, on at activity ──
     (
-      _doctor="${lib.getExe' pkgs.kdePackages.libkscreen "kscreen-doctor"}"
-      export WAYLAND_DISPLAY="''${WAYLAND_DISPLAY:-wayland-0}"
+      for _try in $(${seq} 1 40); do
+        [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ] && break
+        sleep 0.5
+      done
+
+      if [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
+        _log "WARNING: Wayland socket not ready, skipping greeter idle DPMS"
+        exit 0
+      fi
+
+      ${kscreenDoctor} --dpms on >/dev/null 2>&1 || _log "WARNING: failed to force greeter DPMS on"
+      _log "starting 60s greeter idle DPMS"
+      exec ${swayidle} -w \
+        timeout 60 '${kscreenDoctor} --dpms off' \
+        resume '${kscreenDoctor} --dpms on' \
+        before-sleep '${kscreenDoctor} --dpms on'
+    ) &
+    _IDLE_PID=$!
+
+    # ── 4.6 Force DisplayLink greeter output to 1080p30 when KWin is ready ──
+    (
+      _doctor="${kscreenDoctor}"
       _set_any=0
       for _try in $(${seq} 1 40); do
-        if [ ! -S "''${XDG_RUNTIME_DIR:-/var/run/sddm}/$WAYLAND_DISPLAY" ]; then
+        if [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
           sleep 0.5
           continue
         fi
