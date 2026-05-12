@@ -7,9 +7,9 @@
 
     bar = {
       location = "top";
-      scale = 1.0;
-      "inset-edge" = 6.0;
-      "inset-ends" = 8.0;
+      scale = 0.9;
+      "inset-edge" = 2.0;
+      "inset-ends" = 6.0;
       padding = 0.0;
       "padding-ends" = 0.0;
       "module-gap" = 0.25;
@@ -20,8 +20,8 @@
       shadow = "none";
       "button-variant" = "block-prefix";
       "button-bg-opacity" = 78;
-      "button-icon-size" = 1.0;
-      "button-label-size" = 1.0;
+      "button-icon-size" = 0.9;
+      "button-label-size" = 0.9;
       "button-label-weight" = "semibold";
       "button-rounding" = "full";
       "button-border-location" = "all";
@@ -197,9 +197,9 @@
       };
 
       systray = {
-        "icon-scale" = 1.0;
-        "item-gap" = 0.25;
-        "internal-padding" = 0.5;
+        "icon-scale" = 0.9;
+        "item-gap" = 0.2;
+        "internal-padding" = 0.4;
       };
     };
 

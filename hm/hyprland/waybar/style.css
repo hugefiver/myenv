@@ -3,7 +3,7 @@
   border-radius: 0;
   min-height: 0;
   font-family: "Noto Sans", "Noto Sans CJK SC", "CaskaydiaCove Nerd Font Mono", "Noto Color Emoji";
-  font-size: 13px;
+  font-size: 12px;
 }
 
 window#waybar {
@@ -28,8 +28,8 @@ tooltip {
 #tray,
 #custom-power {
   margin: 0 2px;
-  padding: 0 10px;
-  min-height: 26px;
+  padding: 0 8px;
+  min-height: 24px;
   background: rgba(42, 37, 32, 0.78);
   border: 1px solid rgba(219, 175, 110, 0.08);
   border-radius: 14px;
@@ -38,11 +38,11 @@ tooltip {
 }
 
 #workspaces button {
-  padding: 0 8px;
+  padding: 0 7px;
   margin: 2px 2px;
   color: #968b80;
   border-radius: 12px;
-  min-width: 28px;
+  min-width: 26px;
   transition: all 0.3s ease;
 }
 
@@ -50,7 +50,7 @@ tooltip {
   color: #faf4ee;
   background: rgba(219, 168, 107, 0.28);
   border: 1px solid rgba(219, 175, 110, 0.12);
-  min-width: 40px;
+  min-width: 36px;
 }
 
 #workspaces button:hover {
@@ -66,11 +66,11 @@ tooltip {
 
 #custom-launcher,
 #custom-power {
-  padding: 0 12px;
+  padding: 0 10px;
   color: #faf4ee;
   background: rgba(219, 168, 107, 0.24);
   border: 1px solid rgba(219, 168, 107, 0.3);
-  font-size: 22px;
+  font-size: 20px;
   border-radius: 14px;
 }
 
@@ -87,7 +87,7 @@ tooltip {
 #clock {
   color: #e6ddd4;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 #cpu, #memory, #temperature,
@@ -98,7 +98,7 @@ tooltip {
   border: none;
   border-radius: 0;
   min-height: 0;
-  font-size: 15px;
+  font-size: 13px;
   border-left: 1px solid rgba(219, 175, 110, 0.06);
 }
 
