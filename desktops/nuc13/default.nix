@@ -225,6 +225,104 @@
     "dm-cache-smq"
   ];
 
+  services.displayManager.sddm.theme = "breeze-blank";
+  environment.systemPackages = [
+    (pkgs.stdenv.mkDerivation {
+      pname = "sddm-theme-breeze-blank";
+      version = "1.0";
+      src = "${pkgs.kdePackages.plasma-desktop}/share/sddm/themes/breeze";
+      installPhase = ''
+        mkdir -p $out/share/sddm/themes/breeze-blank
+        cp -r * $out/share/sddm/themes/breeze-blank/
+        chmod -R u+w $out/share/sddm/themes/breeze-blank
+
+        cd $out/share/sddm/themes/breeze-blank
+        sed -i "s/^Name=.*/Name=breeze-blank/" metadata.desktop
+        substituteInPlace Main.qml \
+          --replace-fail '        onPressed: uiVisible = true;
+        onPositionChanged: uiVisible = true;' '        onPressed: resetBlanking()
+        onPositionChanged: resetBlanking()' \
+          --replace-fail '        Keys.onPressed: event => {
+            uiVisible = true;
+            event.accepted = false;
+        }' '        Keys.onPressed: event => {
+            resetBlanking()
+            event.accepted = false
+        }'
+
+        # Append root-level declarations inside the upstream Breeze Item.
+        sed -i "$ d" Main.qml
+        cat >> Main.qml <<'QML'
+
+    function resetBlanking() {
+        loginScreenRoot.uiVisible = true
+        if (blackOverlay.visible) {
+            blackOverlay.visible = false
+            userListComponent.mainPasswordBox.forceActiveFocus()
+        }
+        blankTimer.restart()
+    }
+
+    Timer {
+        id: blankTimer
+        interval: 60000
+        running: true
+        repeat: false
+        onTriggered: {
+            blackOverlay.visible = true
+            blackOverlay.forceActiveFocus()
+        }
+    }
+
+    Rectangle {
+        id: blackOverlay
+        anchors.fill: parent
+        color: "black"
+        visible: false
+        z: 99999
+        focus: visible
+
+        onVisibleChanged: {
+            if (visible) {
+                forceActiveFocus()
+            }
+        }
+
+        Keys.onPressed: event => {
+            resetBlanking()
+            event.accepted = true
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.AllButtons
+            onEntered: resetBlanking()
+            onPositionChanged: resetBlanking()
+            onPressed: mouse => {
+                resetBlanking()
+                mouse.accepted = true
+            }
+            onWheel: wheel => {
+                resetBlanking()
+                wheel.accepted = true
+            }
+        }
+    }
+
+
+
+    Connections {
+        target: userListComponent.mainPasswordBox
+        ignoreUnknownSignals: true
+        function onTextChanged() { resetBlanking() }
+        function onCursorPositionChanged() { resetBlanking() }
+    }
+}
+QML
+      '';
+    })
+  ];
   services.displayManager.sddm.settings.Wayland.CompositorCommand = let
     kwin = lib.getExe' pkgs.kdePackages.kwin "kwin_wayland";
     dirname = "${pkgs.coreutils}/bin/dirname";
@@ -232,13 +330,29 @@
     grep = "${pkgs.gnugrep}/bin/grep";
     od = "${pkgs.coreutils}/bin/od";
     mkfifo = "${pkgs.coreutils}/bin/mkfifo";
+    mktemp = "${pkgs.coreutils}/bin/mktemp";
     rm = "${pkgs.coreutils}/bin/rm";
     udevadm = "${pkgs.systemd}/bin/udevadm";
     pgrep = "${pkgs.procps}/bin/pgrep";
+    jq = "${pkgs.jq}/bin/jq";
+    seq = "${pkgs.coreutils}/bin/seq";
   in toString (pkgs.writeShellScript "sddm-compositor" ''
     export KWIN_DRM_NO_DIRECT_SCANOUT=1
-    _FIFO="/tmp/sddm-drm-monitor.$$"
     _log() { echo "[sddm-compositor] $*" >&2; }
+    _RUNTIME_DIR="''${XDG_RUNTIME_DIR:-/var/run/sddm}"
+    _FIFO_DIR=$(${mktemp} -d "$_RUNTIME_DIR/sddm-drm-monitor.XXXXXX") || { _log "ERROR: failed to create DRM monitor directory in $_RUNTIME_DIR"; exit 1; }
+    _FIFO="$_FIFO_DIR/events"
+    _KWIN_PID=""
+    _UDEV_PID=""
+    _KSCREEN_PID=""
+    _cleanup() {
+      trap - EXIT
+      [ -n "''${_KSCREEN_PID:-}" ] && kill "$_KSCREEN_PID" 2>/dev/null
+      [ -n "''${_UDEV_PID:-}" ] && kill "$_UDEV_PID" 2>/dev/null
+      [ -n "''${_KWIN_PID:-}" ] && kill "$_KWIN_PID" 2>/dev/null
+      [ -n "''${_FIFO_DIR:-}" ] && ${rm} -rf "$_FIFO_DIR"
+    }
+    trap '_cleanup' EXIT
 
     # ── EDID preferred timing 分辨率检测：原生宽 > 高 = 横屏 ──
     # EDID 第一个 Detailed Timing Descriptor 起始于 byte 54（共 18 字节）：
@@ -336,14 +450,48 @@
     _KWIN_PID=$!
 
     # ── 5. DRM 设备变更监听 ──
-    ${rm} -f "$_FIFO"
-    ${mkfifo} "$_FIFO"
+    ${mkfifo} "$_FIFO" || { _log "ERROR: failed to create DRM monitor FIFO"; exit 1; }
     ${udevadm} monitor -s drm -u > "$_FIFO" 2>/dev/null &
     _UDEV_PID=$!
 
-    _cleanup() { kill "$_KWIN_PID" "$_UDEV_PID" 2>/dev/null; ${rm} -f "$_FIFO"; }
     trap '_cleanup; wait "$_KWIN_PID" 2>/dev/null; exit' TERM INT HUP
 
+    # ── 4.5 Force DisplayLink greeter output to 1080p30 when KWin is ready ──
+    (
+      _doctor="${lib.getExe' pkgs.kdePackages.libkscreen "kscreen-doctor"}"
+      export WAYLAND_DISPLAY="''${WAYLAND_DISPLAY:-wayland-0}"
+      _set_any=0
+      for _try in $(${seq} 1 40); do
+        if [ ! -S "''${XDG_RUNTIME_DIR:-/var/run/sddm}/$WAYLAND_DISPLAY" ]; then
+          sleep 0.5
+          continue
+        fi
+
+        _json=$($_doctor --json 2>/dev/null) || { sleep 0.5; continue; }
+        _outputs=$(printf '%s\n' "$_json" | ${jq} -r '.outputs[]? | select(.connected == true) | .id' 2>/dev/null)
+        [ -n "$_outputs" ] || { sleep 0.5; continue; }
+
+        _set_any=0
+        for _out in $_outputs; do
+          case "$_out" in
+            ""|*[!0-9]*)
+              _log "WARNING: skipping unexpected kscreen output id: $_out"
+              continue
+              ;;
+          esac
+
+          if $_doctor "output.$_out.mode.1920x1080@30" >/dev/null 2>&1; then
+            _log "set output $_out to 1920x1080@30"
+            _set_any=1
+          fi
+        done
+
+        [ "$_set_any" -eq 1 ] && break
+        sleep 0.5
+      done
+      [ "$_set_any" -eq 1 ] || _log "WARNING: could not set any output to 1920x1080@30"
+    ) &
+    _KSCREEN_PID=$!
     _CUR="$_card"
     while true; do
       if ! IFS= read -r -t 5 _; then
