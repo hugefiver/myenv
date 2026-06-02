@@ -65,6 +65,7 @@ type groupsModel struct {
 
 	searching bool
 	search    string
+	autoSelect bool
 }
 
 func newGroupsModel(cli *api.Client) *groupsModel {
@@ -244,10 +245,29 @@ func (m *groupsModel) Update(msg tea.Msg) (tea.Cmd, string, bool) {
 		return m.load(), "selected " + v.node, false
 	case groupDelayMsg:
 		if v.err != nil {
+			m.autoSelect = false
 			return nil, "group test failed: " + v.err.Error(), true
 		}
 		for k, d := range v.res {
 			m.delay[k] = d
+		}
+		if m.autoSelect {
+			m.autoSelect = false
+			best := ""
+			bestDelay := 0
+			for name, d := range v.res {
+				if d <= 0 {
+					continue
+				}
+				if best == "" || d < bestDelay {
+					best = name
+					bestDelay = d
+				}
+			}
+			if best == "" {
+				return nil, "Auto: all nodes timed out", true
+			}
+			return m.selectNode(v.group, best), "Auto: " + best + " (" + itoaMs(bestDelay) + ")", false
 		}
 		return nil, "group tested", false
 	case nodeDelayMsg:
@@ -339,6 +359,11 @@ func (m *groupsModel) handleLeftKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
 		if m.leftCursor < len(vr) {
 			return m.testGroup(vr[m.leftCursor].name), "testing group", false
 		}
+	case "T":
+		if m.leftCursor < len(vr) {
+			m.autoSelect = true
+			return m.testGroup(vr[m.leftCursor].name), "Auto: testing & selecting", false
+		}
 	}
 	return nil, "", false
 }
@@ -371,6 +396,9 @@ func (m *groupsModel) handleRightKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
 		if m.rightCursor < len(nodes) {
 			return m.testNode(nodes[m.rightCursor]), "testing node", false
 		}
+	case "T":
+		m.autoSelect = true
+		return m.testGroup(g.Name), "Auto: testing & selecting", false
 	}
 	return nil, "", false
 }

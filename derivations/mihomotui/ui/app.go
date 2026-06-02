@@ -22,12 +22,13 @@ type App struct {
 	status    string
 	statusErr bool
 
-	groups  *groupsModel
-	proxies *proxiesModel
-	conns   *connsModel
-	logs    *logsModel
-	traffic *trafficModel
-	config  *configModel
+	groups   *groupsModel
+	proxies  *proxiesModel
+	conns    *connsModel
+	logs     *logsModel
+	traffic  *trafficModel
+	profiles *profilesModel
+	config   *configModel
 
 	bus chan tea.Msg
 }
@@ -35,12 +36,13 @@ type App struct {
 func NewApp(cli *api.Client) *App {
 	return &App{
 		cli:     cli,
-		groups:  newGroupsModel(cli),
-		proxies: newProxiesModel(cli),
-		conns:   newConnsModel(cli),
-		logs:    newLogsModel(cli),
-		traffic: newTrafficModel(cli),
-		config:  newConfigModel(cli),
+		groups:   newGroupsModel(cli),
+		proxies:  newProxiesModel(cli),
+		conns:    newConnsModel(cli),
+		logs:     newLogsModel(cli),
+		traffic:  newTrafficModel(cli),
+		profiles: newProfilesModel(cli),
+		config:   newConfigModel(cli),
 		bus:     make(chan tea.Msg, 64),
 	}
 }
@@ -94,6 +96,8 @@ func (a *App) switchTab(t tab) tea.Cmd {
 		return a.logs.start(a.send)
 	case tabTraffic:
 		return a.traffic.start(a.send)
+	case tabProfiles:
+		return a.profiles.load()
 	case tabConfig:
 		return a.config.load()
 	}
@@ -114,6 +118,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.conns.width, a.conns.height = bw, bh
 		a.logs.width, a.logs.height = bw, bh
 		a.traffic.width, a.traffic.height = bw, bh
+		a.profiles.width, a.profiles.height = bw, bh
 		a.config.width, a.config.height = bw, bh
 		return a, nil
 	case configLoadedMsg:
@@ -137,6 +142,9 @@ func (a *App) handleGlobalKey(k tea.KeyMsg) (tea.Cmd, bool) {
 	if a.active == tabGroups && a.groups.searching {
 		return nil, false
 	}
+	if a.active == tabProfiles && a.profiles.importing {
+		return nil, false
+	}
 	switch k.String() {
 	case "ctrl+c":
 		a.conns.stop()
@@ -145,6 +153,9 @@ func (a *App) handleGlobalKey(k tea.KeyMsg) (tea.Cmd, bool) {
 		return tea.Quit, true
 	case "q":
 		if a.active == tabGroups && (a.groups.searching) {
+			return nil, false
+		}
+		if a.active == tabProfiles && a.profiles.importing {
 			return nil, false
 		}
 		a.conns.stop()
@@ -162,6 +173,8 @@ func (a *App) handleGlobalKey(k tea.KeyMsg) (tea.Cmd, bool) {
 	case "5":
 		return a.switchTab(tabTraffic), true
 	case "6":
+		return a.switchTab(tabProfiles), true
+	case "7":
 		return a.switchTab(tabConfig), true
 	case "shift+tab":
 		return a.switchTab((a.active + tabCount - 1) % tabCount), true
@@ -184,6 +197,8 @@ func (a *App) dispatchInner(msg tea.Msg) tea.Cmd {
 		cmd, status, isErr = a.logs.Update(msg)
 	case tabTraffic:
 		cmd, status, isErr = a.traffic.Update(msg)
+	case tabProfiles:
+		cmd, status, isErr = a.profiles.Update(msg)
 	case tabConfig:
 		cmd, status, isErr = a.config.Update(msg)
 	}
@@ -240,6 +255,7 @@ func (a *App) View() string {
 	a.conns.width, a.conns.height = innerW, innerH
 	a.logs.width, a.logs.height = innerW, innerH
 	a.traffic.width, a.traffic.height = innerW, innerH
+	a.profiles.width, a.profiles.height = innerW, innerH
 	a.config.width, a.config.height = innerW, innerH
 
 	var body string
@@ -254,6 +270,8 @@ func (a *App) View() string {
 		body = a.logs.View()
 	case tabTraffic:
 		body = a.traffic.View()
+	case tabProfiles:
+		body = a.profiles.View()
 	case tabConfig:
 		body = a.config.View()
 	}

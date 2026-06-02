@@ -14,11 +14,12 @@ const (
 	tabConns
 	tabLogs
 	tabTraffic
+	tabProfiles
 	tabConfig
 	tabCount
 )
 
-var tabNames = [...]string{"1 Groups", "2 Proxies", "3 Conns", "4 Logs", "5 Traffic", "6 Config"}
+var tabNames = [...]string{"1 Groups", "2 Proxies", "3 Conns", "4 Logs", "5 Traffic", "6 Profiles", "7 Config"}
 
 func renderTabs(active tab, width int) string {
 	cells := make([]string, 0, tabCount)

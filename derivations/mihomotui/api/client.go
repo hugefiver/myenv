@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -123,4 +124,34 @@ func (c *Client) SetMode(ctx context.Context, mode string) error {
 
 func (c *Client) SetTun(ctx context.Context, enable bool) error {
 	return c.PatchConfig(ctx, map[string]any{"tun": map[string]any{"enable": enable}})
+}
+
+func (c *Client) PutConfig(ctx context.Context, path string) error {
+	return c.do(ctx, "PUT", "/configs?force=true", map[string]string{"path": path}, nil)
+}
+
+func (c *Client) DownloadConfig(ctx context.Context, rawURL string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("bad url: %w", err)
+	}
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("download failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("http %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+	}
+	f, err := os.CreateTemp("", "mihomo-profile-*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("temp file: %w", err)
+	}
+	defer f.Close()
+	if _, err := io.Copy(f, resp.Body); err != nil {
+		os.Remove(f.Name())
+		return "", fmt.Errorf("write failed: %w", err)
+	}
+	return f.Name(), nil
 }
