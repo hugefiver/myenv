@@ -246,6 +246,11 @@ in {
     # 二进制重复在 PATH 中冲突。HM 仅负责生成配置文件和加载 plugins。
     # 见 HM hyprland 模块 package option 的 extraDescription。
     package = null;
+    portalPackage = null;
+    # 这里仍然维护 hyprlang 片段（extraConfig 里 source *.conf）。HM 26.05
+    # 会按 home.stateVersion 默认切到 Lua，显式固定避免后续 stateVersion 更新后
+    # 把这些 source 行写进 hyprland.lua。
+    configType = "hyprlang";
     # 系统侧已启用 programs.hyprland.withUWSM = true，UWSM 会自己管理
     # graphical-session.target / wayland-wm@hyprland.target。
     # Hyprland 官方 wiki 明确要求：使用 UWSM 时 HM 这边必须关掉 systemd 集成，

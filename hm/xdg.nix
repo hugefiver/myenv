@@ -1,9 +1,12 @@
-{ pkgs, ... }: {
+{ pkgs, lib, ... }: {
   xdg.portal = {
-    enable = true;
+    # Hyprland portal is provided by the NixOS module via
+    # programs.hyprland.portalPackage. HM still owns the user portal defaults
+    # and KDE/GTK fallbacks; force this because HM's Hyprland module sets
+    # xdg.portal.enable = false when portalPackage = null.
+    enable = lib.mkForce true;
     xdgOpenUsePortal = true;
     extraPortals = [
-      pkgs.xdg-desktop-portal-hyprland
       pkgs.kdePackages.xdg-desktop-portal-kde
       pkgs.xdg-desktop-portal-gtk
     ];
