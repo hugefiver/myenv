@@ -50,8 +50,7 @@
           ];
           right = [
             { name = "hardware"; modules = [ "cpu" "ram" "custom-temperature" ]; }
-            { name = "status"; modules = [ "volume" "network" "battery" ]; }
-            "bluetooth"
+            { name = "status"; modules = [ "volume" "network" ]; }
             "systray"
             "custom-power"
           ];
@@ -88,10 +87,11 @@
       custom = [
         {
           id = "launcher";
-          "icon-name" = "tb-grid-dots-symbolic";
-          "icon-show" = true;
-          "label-show" = false;
-          "icon-bg-color" = "yellow";
+          "icon-show" = false;
+          "label-show" = true;
+          command = "printf '应用\\n'";
+          "interval-ms" = 86400000;
+          "label-color" = "yellow";
           "left-click" = "~/.config/hypr/scripts/rofi-launcher.sh";
         }
         {
@@ -100,19 +100,20 @@
             for f in /sys/devices/platform/coretemp.0/hwmon/hwmon*/temp1_input; do
               [ -r "$f" ] && awk '{printf "%d°C\\n", $1 / 1000}' "$f" && exit
             done
-            echo "--°C"
+            true
           '';
+          "hide-if-empty" = true;
           "interval-ms" = 5000;
-          "icon-name" = "ld-thermometer-symbolic";
-          "icon-bg-color" = "green";
+          "icon-show" = false;
           "label-color" = "green";
         }
         {
           id = "power";
-          "icon-name" = "ld-power-symbolic";
-          "icon-show" = true;
-          "label-show" = false;
-          "icon-bg-color" = "red";
+          "icon-show" = false;
+          "label-show" = true;
+          command = "printf '电源\\n'";
+          "interval-ms" = 86400000;
+          "label-color" = "red";
           "left-click" = "~/.config/hypr/scripts/power-menu.sh";
         }
       ];
@@ -139,60 +140,59 @@
 
       clock = {
         format = "%m月%d日 %H:%M %a";
-        "icon-name" = "tb-calendar-time-symbolic";
-        "icon-bg-color" = "yellow";
-        "label-color" = "fg";
+        "icon-show" = false;
+        "label-color" = "accent";
         "left-click" = "dropdown:calendar";
         "right-click" = "dropdown:weather";
       };
 
       cpu = {
         "poll-interval-ms" = 3000;
-        format = "{{ percent }}%";
-        "icon-name" = "ld-cpu-symbolic";
-        "icon-bg-color" = "blue";
+        format = "CPU {{ percent }}%";
+        "icon-show" = false;
         "label-color" = "blue";
       };
 
       ram = {
         "poll-interval-ms" = 5000;
-        format = "{{ percent }}%";
-        "icon-bg-color" = "red";
+        format = "RAM {{ percent }}%";
+        "icon-show" = false;
         "label-color" = "red";
       };
 
       media = {
         format = "{{ title }} - {{ artist }}";
         "label-max-length" = 36;
+        "icon-show" = false;
         "left-click" = "dropdown:media";
       };
 
       volume = {
-        format = "{{ percent }}%";
+        format = "Vol {{ percent }}%";
+        "icon-show" = false;
         "left-click" = "dropdown:audio";
         "middle-click" = "wayle audio output-mute";
-        "icon-bg-color" = "green";
         "label-color" = "green";
       };
 
       network = {
         "label-max-length" = 15;
+        "icon-show" = false;
         "left-click" = "dropdown:network";
-        "icon-bg-color" = "green";
         "label-color" = "green";
       };
 
       battery = {
-        format = "{{ percent }}%";
+        format = "Bat {{ percent }}%";
+        "icon-show" = false;
         "left-click" = "dropdown:battery";
-        "icon-bg-color" = "yellow";
         "label-color" = "yellow";
       };
 
       bluetooth = {
         "label-max-length" = 15;
+        "icon-show" = false;
         "left-click" = "dropdown:bluetooth";
-        "icon-bg-color" = "blue";
         "label-color" = "blue";
       };
 
