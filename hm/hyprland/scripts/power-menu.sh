@@ -12,7 +12,7 @@ chosen=$(echo -e "$entries" | rofi -dmenu -no-config -theme ~/.config/rofi/power
 
 case "$chosen" in
   *锁屏*) hyprlock ;;
-  *注销*) hyprctl dispatch exit ;;
+  *注销*) uwsm stop ;;
   *休眠*) systemctl suspend ;;
   *重启*) systemctl reboot ;;
   *关机*) systemctl poweroff ;;

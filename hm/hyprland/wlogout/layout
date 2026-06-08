@@ -6,7 +6,7 @@
 }
 {
     "label": "logout",
-    "action": "hyprctl dispatch exit",
+    "action": "uwsm stop",
     "text": "注销",
     "keybind": "e"
 }
