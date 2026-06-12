@@ -17,6 +17,17 @@
     ./disk.nix
   ];
 
+  boot.kernelParams = ["default_hugepagesz=2M" "hugepagesz=1G" "hugepages=2"];
+  boot.kernel.sysctl = {
+    "vm.nr_hugepages" = 1260;
+  };
+
+  boot.kernel.sysctl."net.ipv4.tcp_congestion_control" = "bbr";
+  boot.kernel.sysctl."net.core.rmem_max" = 16777216;
+  boot.kernel.sysctl."net.core.wmem_max" = 16777216;
+  boot.kernel.sysctl."net.ipv4.tcp_rmem" = "4096 87380 16777216";
+  boot.kernel.sysctl."net.ipv4.tcp_wmem" = "4096 87380 16777216";
+
   programs.clash-verge = {
     enable = true;
     package = unstable.clash-verge-rev;
