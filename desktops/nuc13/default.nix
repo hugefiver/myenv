@@ -7,7 +7,60 @@
   unstable,
   system,
   ...
-} : {
+} : let
+  mihomotuiRepo = "/home/hugefiver/.local/share/mihomotui";
+  mihomotuiActive = "${mihomotuiRepo}/active.yaml";
+  legacyConfig = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";
+  migrationId = "6d69686f6d6f7475692d6d6967726174";
+  seedMihomotui = pkgs.writeShellApplication {
+    name = "mihomotui-seed-profile-repo";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      if [ "$#" -ne 4 ]; then
+        printf '%s\n' 'usage: mihomotui-seed-profile-repo REPO LEGACY OWNER GROUP' >&2
+        exit 64
+      fi
+
+      REPO="$1"
+      LEGACY="$2"
+      OWNER="$3"
+      GROUP="$4"
+      MIGRATION_ID='${migrationId}'
+
+      if [ -e "$REPO" ] || [ -L "$REPO" ] || [ ! -f "$LEGACY" ]; then
+        exit 0
+      fi
+
+      repoParent=$(dirname "$REPO")
+      install -d -m 0755 "$repoParent"
+      stage=$(mktemp -d "$repoParent/.mihomotui-seed.XXXXXX")
+      cleanup() {
+        rm -rf -- "$stage"
+      }
+      trap cleanup EXIT
+
+      chmod 0700 "$stage"
+      mkdir -m 0700 "$stage/profiles"
+      cp -- "$LEGACY" "$stage/profiles/$MIGRATION_ID.yaml"
+      cp -- "$LEGACY" "$stage/active.yaml"
+      timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      printf '{\n  "version": 1,\n  "active_id": "%s",\n  "profiles": [\n    {\n      "id": "%s",\n      "name": "clash-verge-migration",\n      "kind": "file",\n      "file": "profiles/%s.yaml",\n      "created_at": "%s",\n      "updated_at": "%s"\n    }\n  ]\n}\n' \
+        "$MIGRATION_ID" "$MIGRATION_ID" "$MIGRATION_ID" "$timestamp" "$timestamp" > "$stage/profiles.json"
+      chmod 0600 "$stage/profiles/$MIGRATION_ID.yaml" "$stage/active.yaml" "$stage/profiles.json"
+
+      if [ "$(id -u)" -eq 0 ]; then
+        chown -R "$OWNER:$GROUP" "$stage"
+      fi
+
+      if ! mv -T --no-clobber -- "$stage" "$REPO"; then
+        if [ -e "$REPO" ] || [ -L "$REPO" ]; then
+          exit 0
+        fi
+        exit 1
+      fi
+    '';
+  };
+in {
   imports = [
     ../common
     ../common/personal.nix
@@ -58,11 +111,21 @@
     });
   '';
 
+  system.activationScripts.mihomotuiProfileSeed = lib.stringAfter [ "users" ] ''
+    ${lib.escapeShellArgs [
+      "${seedMihomotui}/bin/mihomotui-seed-profile-repo"
+      mihomotuiRepo
+      legacyConfig
+      "hugefiver"
+      "users"
+    ]}
+  '';
+  system.build.mihomotuiProfileSeed = seedMihomotui;
+
   # SSH 期透明代理；登录桌面后 mihomo-boot-handoff 同步停止，verge 接管
   systemd.services.mihomo-boot =
     let
-      vergeDir = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev";
-      vergeCfg = "${vergeDir}/clash-verge.yaml";
+      bootHome = "/var/lib/mihomo-boot";
       bootDevice = "MihomoBoot";
       bootTable = "12022";
       bootRule = "9200";
@@ -70,8 +133,8 @@
         name = "mihomo-boot-start";
         runtimeInputs = [ unstable.mihomo pkgs.coreutils pkgs.iproute2 pkgs.nftables pkgs.procps pkgs.gnugrep pkgs.yq-go ];
         text = ''
-          VERGE_DIR='${vergeDir}'
-          VERGE_CFG='${vergeCfg}'
+          SOURCE_CFG='${mihomotuiActive}'
+          BOOT_HOME='${bootHome}'
           RUN_DIR="''${RUNTIME_DIRECTORY:-/run/mihomo-boot}"
           RUN_CFG="$RUN_DIR/config.yaml"
 
@@ -146,10 +209,10 @@
             .secret = "" |
             del(.external-controller-pipe) |
             del(.external-controller-tls)
-          ' "$VERGE_CFG" > "$RUN_CFG"
+          ' "$SOURCE_CFG" > "$RUN_CFG"
 
-          mihomo -t -d "$VERGE_DIR" -f "$RUN_CFG"
-          exec mihomo -d "$VERGE_DIR" -f "$RUN_CFG"
+          mihomo -t -d "$BOOT_HOME" -f "$RUN_CFG"
+          exec mihomo -d "$BOOT_HOME" -f "$RUN_CFG"
         '';
       };
       # SIGKILL/崩溃兜底；正常 SIGTERM mihomo 自清
@@ -169,7 +232,7 @@
       description = "mihomo (boot-time, handed off to clash-verge GUI after login)";
       wantedBy = [ "multi-user.target" ];
       unitConfig = {
-        ConditionPathExists = vergeCfg;
+        ConditionPathExists = mihomotuiActive;
         StartLimitIntervalSec = 0;
       };
       serviceConfig = {
@@ -180,6 +243,8 @@
         TimeoutStartSec = "90s";
         RuntimeDirectory = "mihomo-boot";
         RuntimeDirectoryMode = "0700";
+        StateDirectory = "mihomo-boot";
+        StateDirectoryMode = "0700";
       };
     };
   boot.kernelPackages = unstable.linuxPackages_zen;
