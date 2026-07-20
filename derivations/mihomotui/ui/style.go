@@ -14,11 +14,12 @@ var (
 	colBorderHi = lipgloss.Color("75")
 	colCyan     = lipgloss.Color("44")
 
-	stTabActive = lipgloss.NewStyle().Foreground(lipgloss.Color("232")).Background(colAccent).Bold(true).Padding(0, 1)
-	stTabIdle   = lipgloss.NewStyle().Foreground(colMuted).Padding(0, 1)
+	stTabActive = lipgloss.NewStyle().Foreground(lipgloss.Color("232")).Background(colAccent).Bold(true)
+	stTabIdle   = lipgloss.NewStyle().Foreground(colMuted)
 	stTabBar    = lipgloss.NewStyle().Background(colBgAlt)
 
 	stTitle  = lipgloss.NewStyle().Foreground(colAccent).Bold(true)
+	stPlain  = lipgloss.NewStyle()
 	stMuted  = lipgloss.NewStyle().Foreground(colMuted)
 	stOK     = lipgloss.NewStyle().Foreground(colOK)
 	stWarn   = lipgloss.NewStyle().Foreground(colWarn)

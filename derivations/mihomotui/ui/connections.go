@@ -9,13 +9,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"mihomotui/api"
+	"mihomotui/internal/termtext"
 )
 
-type connsTickMsg struct{}
-
 type connsSnapMsg struct {
-	snap api.ConnectionsSnapshot
-	err  error
+	generation requestID
+	snap       api.ConnectionsSnapshot
+	err        error
+	end        bool
 }
 
 type connRow struct {
@@ -31,28 +32,33 @@ type connRow struct {
 }
 
 type connsModel struct {
-	cli      *api.Client
-	rows     []connRow
-	prev     map[string]connRow
-	prevTime time.Time
-	cancel   context.CancelFunc
-	cursor   int
-	scroll   int
-	follow   bool
-	upTotal  int64
-	dnTotal  int64
-	width    int
-	height   int
+	ctx        context.Context
+	cli        *api.Client
+	bus        *messageBus
+	rows       []connRow
+	prev       map[string]connRow
+	prevTime   time.Time
+	cancel     context.CancelFunc
+	generation requestID
+	send       func(tea.Msg)
+	errText    string
+	cursor     int
+	scroll     int
+	follow     bool
+	upTotal    int64
+	dnTotal    int64
+	width      int
+	height     int
 }
 
-func newConnsModel(cli *api.Client) *connsModel {
-	return &connsModel{cli: cli, prev: map[string]connRow{}, follow: true}
+func newConnsModel(ctx context.Context, cli *api.Client, bus *messageBus) *connsModel {
+	return &connsModel{ctx: ctx, cli: cli, bus: bus, prev: map[string]connRow{}, follow: true}
 }
 
 func (m *connsModel) start(send func(tea.Msg)) tea.Cmd {
-	m.stop()
-	ctx, cancel := context.WithCancel(context.Background())
-	m.cancel = cancel
+	ctx, generation := beginStream(m.ctx, m.bus, streamConnections, &m.generation, &m.cancel)
+	m.send = send
+	m.errText = ""
 	cli := m.cli
 	go func() {
 		ch := make(chan api.ConnectionsSnapshot, 8)
@@ -63,10 +69,10 @@ func (m *connsModel) start(send func(tea.Msg)) tea.Cmd {
 			case <-ctx.Done():
 				return
 			case s := <-ch:
-				send(connsSnapMsg{snap: s})
+				send(connsSnapMsg{generation: generation, snap: s})
 			case err := <-errCh:
-				if err != nil && ctx.Err() == nil {
-					send(connsSnapMsg{err: err})
+				if ctx.Err() == nil && !streamCanceled(err) {
+					send(connsSnapMsg{generation: generation, err: err, end: true})
 				}
 				return
 			}
@@ -76,10 +82,7 @@ func (m *connsModel) start(send func(tea.Msg)) tea.Cmd {
 }
 
 func (m *connsModel) stop() {
-	if m.cancel != nil {
-		m.cancel()
-		m.cancel = nil
-	}
+	stopStream(&m.generation, &m.cancel)
 }
 
 func (m *connsModel) ingest(s api.ConnectionsSnapshot) {
@@ -93,15 +96,15 @@ func (m *connsModel) ingest(s api.ConnectionsSnapshot) {
 	rows := make([]connRow, 0, len(s.Connections))
 	next := make(map[string]connRow, len(s.Connections))
 	for _, c := range s.Connections {
-		host := c.Metadata.Host
+		host := termtext.SingleLine(c.Metadata.Host)
 		if host == "" {
-			host = c.Metadata.DestinationIP
+			host = termtext.SingleLine(c.Metadata.DestinationIP)
 		}
-		target := host + ":" + c.Metadata.DestinationPort
-		chain := strings.Join(c.Chains, "→")
+		target := host + ":" + termtext.SingleLine(c.Metadata.DestinationPort)
+		chain := termtext.SingleLine(strings.Join(c.Chains, "→"))
 		r := connRow{
-			id: c.ID, target: target, network: c.Metadata.Network,
-			rule: c.Rule, chain: chain, up: c.Upload, down: c.Download,
+			id: c.ID, target: target, network: termtext.SingleLine(c.Metadata.Network),
+			rule: termtext.SingleLine(c.Rule), chain: chain, up: c.Upload, down: c.Download,
 		}
 		if p, ok := m.prev[c.ID]; ok {
 			if c.Upload >= p.up {
@@ -131,15 +134,29 @@ func (m *connsModel) ingest(s api.ConnectionsSnapshot) {
 func (m *connsModel) Update(msg tea.Msg) (tea.Cmd, string, bool) {
 	switch v := msg.(type) {
 	case connsSnapMsg:
-		if v.err != nil {
-			return nil, "conns: " + v.err.Error(), true
+		if v.generation != m.generation {
+			return nil, "", false
 		}
+		if v.err != nil {
+			if streamCanceled(v.err) {
+				return nil, "", false
+			}
+			m.errText = termtext.SingleLine(v.err.Error())
+			return nil, "connections: " + m.errText, true
+		}
+		if v.end {
+			m.errText = "stream ended unexpectedly"
+			return nil, "connections: " + m.errText, true
+		}
+		m.errText = ""
 		m.ingest(v.snap)
 		if m.follow && len(m.rows) > 0 {
 			m.cursor = len(m.rows) - 1
 		}
 	case tea.KeyMsg:
 		switch v.String() {
+		case "r":
+			return m.start(m.send), "connections retrying", false
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -171,11 +188,18 @@ func (m *connsModel) View() string {
 	if m.follow {
 		follow = "on"
 	}
-	b.WriteString(stTitle.Render("Connections"))
-	b.WriteString(stMuted.Render("  total ↑" + humanBytes(m.upTotal) + " ↓" + humanBytes(m.dnTotal) + "  follow=" + follow))
+	title := []textSegment{
+		segment(stTitle, "Connections"),
+		segment(stMuted, "  total ↑"+humanBytes(m.upTotal)+" ↓"+humanBytes(m.dnTotal)+"  follow="+follow),
+		segment(stMuted, "  r=retry"),
+	}
+	if m.errText != "" {
+		title = append(title, segment(stErr, "  error="+m.errText))
+	}
+	b.WriteString(renderTextLine(m.width, title...))
 	b.WriteString("\n\n")
-	header := padR("TARGET", 38) + padR("NET", 5) + padR("RULE", 12) + padR("CHAIN", 24) + padR("UP/DN", 16) + "RATE"
-	b.WriteString(stMuted.Render(header) + "\n")
+	header := termtext.PadRight("TARGET", 38) + termtext.PadRight("NET", 5) + termtext.PadRight("RULE", 12) + termtext.PadRight("CHAIN", 24) + termtext.PadRight("UP/DN", 16) + "RATE"
+	b.WriteString(renderTextLine(m.width, segment(stMuted, header)) + "\n")
 	view := m.height - 4
 	if view <= 0 {
 		view = 1
@@ -188,38 +212,22 @@ func (m *connsModel) View() string {
 	for i := m.scroll; i < end; i++ {
 		r := m.rows[i]
 		marker := "  "
+		markerStyle := stPlain
 		if i == m.cursor {
-			marker = stMark.Render("▸ ")
+			marker, markerStyle = "▸ ", stMark
 		}
-		line := marker + padR(trunc(r.target, 36), 37) +
-			padR(trunc(r.network, 4), 5) +
-			padR(trunc(r.rule, 11), 12) +
-			padR(trunc(r.chain, 23), 24) +
-			padR("↑"+humanBytes(r.up)+" ↓"+humanBytes(r.down), 16) +
-			"↑" + humanBytes(r.upRate) + "/s ↓" + humanBytes(r.downRate) + "/s"
-		b.WriteString(truncWide(line, m.width) + "\n")
+		b.WriteString(renderTextLine(m.width,
+			segment(markerStyle, marker),
+			segment(stPlain, termtext.PadRight(r.target, 37)),
+			segment(stPlain, termtext.PadRight(r.network, 5)),
+			segment(stPlain, termtext.PadRight(r.rule, 12)),
+			segment(stPlain, termtext.PadRight(r.chain, 24)),
+			segment(stPlain, termtext.PadRight("↑"+humanBytes(r.up)+" ↓"+humanBytes(r.down), 16)),
+			segment(stPlain, "↑"+humanBytes(r.upRate)+"/s ↓"+humanBytes(r.downRate)+"/s"),
+		) + "\n")
 	}
 	if len(m.rows) == 0 {
 		b.WriteString(stMuted.Render("no connections"))
 	}
 	return b.String()
 }
-
-func padR(s string, n int) string {
-	if len(s) >= n {
-		return s[:n]
-	}
-	return s + strings.Repeat(" ", n-len(s))
-}
-
-func trunc(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	if n <= 1 {
-		return s[:n]
-	}
-	return s[:n-1] + "…"
-}
-
-var _ = connsTickMsg{}

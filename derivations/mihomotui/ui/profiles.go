@@ -2,43 +2,26 @@ package ui
 
 import (
 	"context"
-	"os"
+	"sort"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"mihomotui/api"
+	"mihomotui/internal/termtext"
+	"mihomotui/profiles"
 )
 
-type profileEntry struct {
-	kind  string    // "FILE" or "URL"
-	name  string    // display name
-	path  string    // local file path
-	url   string    // original URL (empty for FILE)
-	added time.Time // import timestamp
-}
-
-type profileAppliedMsg struct {
-	path string
-	err  error
-}
-
-type profileDownloadedMsg struct {
-	url       string
-	path      string
-	autoApply bool
-	err       error
-}
-
-type profileImportErrMsg struct {
-	msg string
-}
-
 type profilesModel struct {
+	ctx       context.Context
 	cli       *api.Client
-	entries   []profileEntry
+	store     *profiles.Store
+	entries   []profiles.Entry
+	activeID  string
+	request   profileRequest
+	requestNo requestID
+	busy      bool
 	cursor    int
 	scroll    int
 	width     int
@@ -47,244 +30,197 @@ type profilesModel struct {
 	input     string
 }
 
-func newProfilesModel(cli *api.Client) *profilesModel {
-	return &profilesModel{cli: cli}
+func newProfilesModel(ctx context.Context, cli *api.Client, store *profiles.Store) *profilesModel {
+	model := &profilesModel{ctx: ctx, cli: cli, store: store}
+	model.syncFromStore()
+	return model
+}
+
+func (m *profilesModel) syncFromStore() {
+	selected := ""
+	if entry, ok := m.entryAt(m.cursor); ok {
+		selected = entry.ID
+	}
+	snapshot := m.store.Snapshot()
+	m.entries = append(m.entries[:0], snapshot.Profiles...)
+	sort.Slice(m.entries, func(i, j int) bool {
+		if m.entries[i].CreatedAt.Equal(m.entries[j].CreatedAt) {
+			return m.entries[i].ID < m.entries[j].ID
+		}
+		return m.entries[i].CreatedAt.Before(m.entries[j].CreatedAt)
+	})
+	m.activeID = snapshot.ActiveID
+	if selected != "" {
+		for i := range m.entries {
+			if m.entries[i].ID == selected {
+				m.cursor = i
+				return
+			}
+		}
+	}
+	m.cursor = normalizedCursor(m.cursor, len(m.entries))
+}
+
+func normalizedCursor(cursor, length int) int {
+	if length == 0 || cursor < 0 {
+		return 0
+	}
+	if cursor >= length {
+		return length - 1
+	}
+	return cursor
+}
+
+func (m *profilesModel) entryAt(index int) (profiles.Entry, bool) {
+	if index < 0 || index >= len(m.entries) {
+		return profiles.Entry{}, false
+	}
+	return m.entries[index], true
 }
 
 func (m *profilesModel) load() tea.Cmd {
+	m.syncFromStore()
 	return nil
-}
-
-func (m *profilesModel) applyProfile(idx int) tea.Cmd {
-	if idx < 0 || idx >= len(m.entries) {
-		return nil
-	}
-	e := m.entries[idx]
-	cli := m.cli
-	p := e.path
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*reqTimeout)
-		defer cancel()
-		err := cli.PutConfig(ctx, p)
-		return profileAppliedMsg{path: p, err: err}
-	}
-}
-
-func (m *profilesModel) importEntry(input string) tea.Cmd {
-	input = strings.TrimSpace(input)
-	if input == "" {
-		return nil
-	}
-	cli := m.cli
-	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
-		rawURL := input
-		return func() tea.Msg {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*reqTimeout)
-			defer cancel()
-			path, err := cli.DownloadConfig(ctx, rawURL)
-			return profileDownloadedMsg{url: rawURL, path: path, err: err}
-		}
-	}
-	path := input
-	if _, err := os.Stat(path); err != nil {
-		return func() tea.Msg { return profileImportErrMsg{msg: "file not found: " + path} }
-	}
-	m.entries = append(m.entries, profileEntry{
-		kind:  "FILE",
-		name:  pathFileName(path),
-		path:  path,
-		added: time.Now(),
-	})
-	return nil
-}
-
-func pathFileName(p string) string {
-	parts := strings.Split(strings.ReplaceAll(p, "\\", "/"), "/")
-	if len(parts) == 0 {
-		return p
-	}
-	return parts[len(parts)-1]
-}
-
-func (m *profilesModel) refreshURL(idx int) tea.Cmd {
-	if idx < 0 || idx >= len(m.entries) {
-		return nil
-	}
-	e := m.entries[idx]
-	if e.url == "" {
-		return nil
-	}
-	cli := m.cli
-	rawURL := e.url
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*reqTimeout)
-		defer cancel()
-		path, err := cli.DownloadConfig(ctx, rawURL)
-		return profileDownloadedMsg{url: rawURL, path: path, autoApply: true, err: err}
-	}
-}
-
-func (m *profilesModel) removeEntry(idx int) {
-	if idx < 0 || idx >= len(m.entries) {
-		return
-	}
-	m.entries = append(m.entries[:idx], m.entries[idx+1:]...)
-	if m.cursor >= len(m.entries) {
-		m.cursor = len(m.entries) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
 }
 
 func (m *profilesModel) Update(msg tea.Msg) (tea.Cmd, string, bool) {
-	switch v := msg.(type) {
-	case profileAppliedMsg:
-		if v.err != nil {
-			return nil, "apply failed: " + v.err.Error(), true
-		}
-		return nil, "config applied: " + v.path, false
-	case profileImportErrMsg:
-		return nil, v.msg, true
-	case profileDownloadedMsg:
-		if v.err != nil {
-			return nil, "download failed: " + v.err.Error(), true
-		}
-		m.entries = append(m.entries, profileEntry{
-			kind:  "URL",
-			name:  pathFileName(v.path),
-			path:  v.path,
-			url:   v.url,
-			added: time.Now(),
-		})
-		if v.autoApply {
-			return m.applyProfile(len(m.entries)-1), "downloaded, applying", false
-		}
-		return nil, "downloaded: " + v.url, false
+	switch value := msg.(type) {
+	case profileResultMsg:
+		return m.handleProfileResult(value)
 	case tea.KeyMsg:
-		return m.handleKey(v)
+		return m.handleKey(value)
 	}
 	return nil, "", false
 }
 
-func (m *profilesModel) handleKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
+func (m *profilesModel) handleKey(key tea.KeyMsg) (tea.Cmd, string, bool) {
 	if m.importing {
-		return m.handleImportKey(k)
+		return m.handleImportKey(key)
 	}
-	switch k.String() {
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-	case "down", "j":
-		if m.cursor < len(m.entries)-1 {
-			m.cursor++
-		}
-	case "home":
+	switch key.Type {
+	case tea.KeyUp:
+		m.cursor = normalizedCursor(m.cursor-1, len(m.entries))
+	case tea.KeyDown:
+		m.cursor = normalizedCursor(m.cursor+1, len(m.entries))
+	case tea.KeyHome:
 		m.cursor = 0
-	case "end":
-		m.cursor = len(m.entries) - 1
-		if m.cursor < 0 {
-			m.cursor = 0
+	case tea.KeyEnd:
+		m.cursor = normalizedCursor(len(m.entries)-1, len(m.entries))
+	case tea.KeyEnter:
+		return m.applyProfile(m.cursor)
+	case tea.KeyRunes:
+		if key.Paste {
+			return nil, "", false
 		}
-	case "i":
-		m.importing = true
-		m.input = ""
-		return nil, "import: enter file path or URL", false
-	case "enter":
-		return m.applyProfile(m.cursor), "applying profile", false
-	case "d":
-		m.removeEntry(m.cursor)
-		return nil, "profile removed", false
-	case "R":
-		return m.refreshURL(m.cursor), "refreshing URL", false
+		switch string(key.Runes) {
+		case "k":
+			m.cursor = normalizedCursor(m.cursor-1, len(m.entries))
+		case "j":
+			m.cursor = normalizedCursor(m.cursor+1, len(m.entries))
+		case "i":
+			m.importing = true
+			m.input = ""
+			return nil, "import: enter file path or URL", false
+		case "d":
+			return m.deleteProfile(m.cursor)
+		case "R":
+			return m.refreshURL(m.cursor)
+		}
 	}
 	return nil, "", false
 }
 
-func (m *profilesModel) handleImportKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
-	switch k.String() {
-	case "esc":
+func (m *profilesModel) handleImportKey(key tea.KeyMsg) (tea.Cmd, string, bool) {
+	switch key.Type {
+	case tea.KeyEsc:
 		m.importing = false
 		m.input = ""
 		return nil, "", false
-	case "enter":
-		m.importing = false
-		cmd := m.importEntry(m.input)
-		return cmd, "importing", false
-	case "backspace":
-		if len(m.input) > 0 {
-			m.input = m.input[:len(m.input)-1]
+	case tea.KeyEnter:
+		input, err := normalizeSingleInput(m.input)
+		if err != nil {
+			return nil, err.Error(), true
 		}
-	default:
-		s := k.String()
-		if len(s) == 1 {
-			m.input += s
+		cmd, status, isErr := m.importEntry(input)
+		if cmd != nil {
+			m.importing = false
+			m.input = ""
 		}
+		return cmd, status, isErr
+	case tea.KeyBackspace:
+		m.input = removeLastRune(m.input)
+	case tea.KeyRunes:
+		m.input = appendKeyRunes(m.input, key)
 	}
 	return nil, "", false
 }
 
 func (m *profilesModel) View() string {
-	var b strings.Builder
-	b.WriteString(stTitle.Render("Profiles") + "\n\n")
-
+	var output strings.Builder
+	output.WriteString(renderTextLine(m.width, segment(stTitle, "Profiles")) + "\n\n")
 	if m.importing {
-		b.WriteString(stMuted.Render("Import: ") + m.input + "\u2588\n\n")
-		b.WriteString(stMuted.Render("enter confirm  esc cancel") + "\n")
-		return b.String()
+		output.WriteString(renderTextLine(m.width,
+			segment(stMuted, "Import: "),
+			segment(stBase, termtext.Truncate(m.input, m.width)),
+			segment(stPlain, "\u2588"),
+		) + "\n\n")
+		output.WriteString(renderTextLine(m.width, segment(stMuted, "enter confirm  esc cancel")) + "\n")
+		return output.String()
 	}
-
 	if len(m.entries) == 0 {
-		b.WriteString(stMuted.Render("no profiles imported") + "\n\n")
-		b.WriteString(stMuted.Render("[i] import from file or URL"))
-		return b.String()
+		output.WriteString(renderTextLine(m.width, segment(stMuted, "no profiles imported")) + "\n\n")
+		output.WriteString(renderTextLine(m.width, segment(stMuted, "[i] import from file or URL")))
+		return output.String()
 	}
 
-	// List
-	listH := m.height - 6
-	if listH < 3 {
-		listH = 3
+	listHeight := m.height - 6
+	if listHeight < 3 {
+		listHeight = 3
 	}
-	m.scroll = clampScroll(m.cursor, m.scroll, listH, len(m.entries))
-	end := m.scroll + listH
+	m.scroll = clampScroll(m.cursor, m.scroll, listHeight, len(m.entries))
+	end := m.scroll + listHeight
 	if end > len(m.entries) {
 		end = len(m.entries)
 	}
-
-	nameW := m.width - 20
-	if nameW < 10 {
-		nameW = 10
+	nameWidth := m.width - 24
+	if nameWidth < 10 {
+		nameWidth = 10
 	}
-
 	for i := m.scroll; i < end; i++ {
-		e := m.entries[i]
-		cur := "  "
+		entry := m.entries[i]
+		cursor := "  "
+		cursorStyle := stPlain
 		if i == m.cursor {
-			cur = stMark.Render("\u25b8 ")
+			cursor, cursorStyle = "\u25b8 ", stMark
 		}
-		badge := stCyan.Render("FILE")
-		if e.kind == "URL" {
-			badge = stWarn.Render(" URL")
+		active, activeStyle := " ", stPlain
+		if entry.ID == m.activeID {
+			active, activeStyle = "●", stMark
 		}
-		display := e.name
+		name := termtext.PadRight(entry.Name, nameWidth)
+		nameStyle := stPlain
 		if i == m.cursor {
-			display = lipgloss.NewStyle().Bold(true).Render(display)
+			nameStyle = lipgloss.NewStyle().Bold(true)
 		}
-		line := cur + badge + " " + padR(trunc(display, nameW), nameW) + " " + stMuted.Render(e.added.Format("2006-01-02"))
-		b.WriteString(truncWide(line, m.width) + "\n")
+		output.WriteString(renderTextLine(m.width,
+			segment(cursorStyle, cursor),
+			segment(activeStyle, active),
+			segment(stPlain, " "),
+			segment(stCyan, strings.ToUpper(string(entry.Kind))),
+			segment(stPlain, " "),
+			segment(nameStyle, name),
+			segment(stPlain, " "),
+			segment(stMuted, entry.UpdatedAt.Format("2006-01-02")),
+		) + "\n")
 	}
 
-	// Detail
-	b.WriteString("\n")
-	if m.cursor >= 0 && m.cursor < len(m.entries) {
-		e := m.entries[m.cursor]
-		b.WriteString(stMuted.Render("path: ") + stBase.Render(e.path) + "\n")
-		if e.url != "" {
-			b.WriteString(stMuted.Render("url:  ") + stBase.Render(e.url) + "\n")
+	output.WriteString("\n")
+	if entry, ok := m.entryAt(m.cursor); ok {
+		output.WriteString(renderTextLine(m.width, segment(stMuted, "file: "), segment(stBase, entry.File)) + "\n")
+		if entry.Kind == profiles.KindURL {
+			output.WriteString(renderTextLine(m.width, segment(stMuted, "url:  "), segment(stBase, entry.URL)) + "\n")
 		}
-		b.WriteString(stMuted.Render("time: ") + stMuted.Render(e.added.Format("2006-01-02 15:04:05")) + "\n")
+		output.WriteString(renderTextLine(m.width, segment(stMuted, "time: "), segment(stMuted, entry.UpdatedAt.Format("2006-01-02 15:04:05"))) + "\n")
 	}
-
-	return b.String()
+	return output.String()
 }

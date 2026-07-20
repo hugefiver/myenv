@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -8,19 +9,24 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"mihomotui/api"
+	"mihomotui/internal/termtext"
+	"mihomotui/profiles"
 )
 
 const reqTimeout = 3 * time.Second
 
-type forwardMsg struct{ inner tea.Msg }
-
 type App struct {
+	ctx       context.Context
+	cancel    context.CancelFunc
 	cli       *api.Client
+	bus       *messageBus
+	warning   string
 	active    tab
 	width     int
 	height    int
 	status    string
 	statusErr bool
+	configErr string
 
 	groups   *groupsModel
 	proxies  *proxiesModel
@@ -29,38 +35,60 @@ type App struct {
 	traffic  *trafficModel
 	profiles *profilesModel
 	config   *configModel
-
-	bus chan tea.Msg
 }
 
-func NewApp(cli *api.Client) *App {
+func NewApp(parent context.Context, cli *api.Client, store *profiles.Store) *App {
+	ctx, cancel := context.WithCancel(parent)
+	bus := newMessageBus()
 	return &App{
-		cli:     cli,
-		groups:   newGroupsModel(cli),
-		proxies:  newProxiesModel(cli),
-		conns:    newConnsModel(cli),
-		logs:     newLogsModel(cli),
-		traffic:  newTrafficModel(cli),
-		profiles: newProfilesModel(cli),
-		config:   newConfigModel(cli),
-		bus:     make(chan tea.Msg, 64),
+		ctx:      ctx,
+		cancel:   cancel,
+		cli:      cli,
+		bus:      bus,
+		warning:  termtext.SingleLine(cli.Warning()),
+		groups:   newGroupsModel(ctx, cli),
+		proxies:  newProxiesModel(ctx, cli),
+		conns:    newConnsModel(ctx, cli, bus),
+		logs:     newLogsModel(ctx, cli, bus),
+		traffic:  newTrafficModel(ctx, cli, bus),
+		profiles: newProfilesModel(ctx, cli, store),
+		config:   newConfigModel(ctx, cli),
 	}
 }
 
+func (a *App) Close() {
+	a.stopStreams()
+	a.cancel()
+}
+
 func (a *App) send(m tea.Msg) {
-	select {
-	case a.bus <- m:
+	switch v := m.(type) {
+	case connsSnapMsg:
+		if v.err != nil || v.end {
+			a.bus.SendControl(a.ctx, m)
+			return
+		}
+		a.bus.SendLatest(streamConnections, v.generation, m)
+	case logEntryMsg:
+		if v.err != nil || v.end {
+			a.bus.SendControl(a.ctx, m)
+			return
+		}
+		a.bus.SendLog(v.generation, m)
+	case trafficMsg:
+		if v.err != nil || v.end {
+			a.bus.SendControl(a.ctx, m)
+			return
+		}
+		a.bus.SendLatest(streamTraffic, v.generation, m)
 	default:
+		a.bus.SendControl(a.ctx, m)
 	}
 }
 
 func (a *App) waitBus() tea.Cmd {
 	return func() tea.Msg {
-		m, ok := <-a.bus
-		if !ok {
-			return nil
-		}
-		return forwardMsg{inner: m}
+		return a.bus.Wait(a.ctx)
 	}
 }
 
@@ -104,123 +132,20 @@ func (a *App) switchTab(t tab) tea.Cmd {
 	return nil
 }
 
-func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if fm, ok := msg.(forwardMsg); ok {
-		cmd := a.dispatchInner(fm.inner)
-		return a, tea.Batch(cmd, a.waitBus())
-	}
-	switch v := msg.(type) {
-	case tea.WindowSizeMsg:
-		a.width, a.height = v.Width, v.Height
-		bw, bh := a.bodyDims()
-		a.groups.width, a.groups.height = bw, bh
-		a.proxies.width, a.proxies.height = bw, bh
-		a.conns.width, a.conns.height = bw, bh
-		a.logs.width, a.logs.height = bw, bh
-		a.traffic.width, a.traffic.height = bw, bh
-		a.profiles.width, a.profiles.height = bw, bh
-		a.config.width, a.config.height = bw, bh
-		return a, nil
-	case configLoadedMsg:
-		if v.err == nil && v.cfg != nil {
-			a.config.cfg = v.cfg
-			a.groups.setConfig(v.cfg)
-		}
-		if a.active != tabConfig {
-			return a, nil
-		}
-	case tea.KeyMsg:
-		if cmd, handled := a.handleGlobalKey(v); handled {
-			return a, cmd
-		}
-		return a, a.dispatchInner(v)
-	}
-	return a, a.dispatchInner(msg)
-}
-
-func (a *App) handleGlobalKey(k tea.KeyMsg) (tea.Cmd, bool) {
-	if a.active == tabGroups && a.groups.searching {
-		return nil, false
-	}
-	if a.active == tabProfiles && a.profiles.importing {
-		return nil, false
-	}
-	switch k.String() {
-	case "ctrl+c":
-		a.conns.stop()
-		a.logs.stop()
-		a.traffic.stop()
-		return tea.Quit, true
-	case "q":
-		if a.active == tabGroups && (a.groups.searching) {
-			return nil, false
-		}
-		if a.active == tabProfiles && a.profiles.importing {
-			return nil, false
-		}
-		a.conns.stop()
-		a.logs.stop()
-		a.traffic.stop()
-		return tea.Quit, true
-	case "1":
-		return a.switchTab(tabGroups), true
-	case "2":
-		return a.switchTab(tabProxies), true
-	case "3":
-		return a.switchTab(tabConns), true
-	case "4":
-		return a.switchTab(tabLogs), true
-	case "5":
-		return a.switchTab(tabTraffic), true
-	case "6":
-		return a.switchTab(tabProfiles), true
-	case "7":
-		return a.switchTab(tabConfig), true
-	case "shift+tab":
-		return a.switchTab((a.active + tabCount - 1) % tabCount), true
-	}
-	return nil, false
-}
-
-func (a *App) dispatchInner(msg tea.Msg) tea.Cmd {
-	var cmd tea.Cmd
-	var status string
-	var isErr bool
-	switch a.active {
-	case tabGroups:
-		cmd, status, isErr = a.groups.Update(msg)
-	case tabProxies:
-		cmd, status, isErr = a.proxies.Update(msg)
-	case tabConns:
-		cmd, status, isErr = a.conns.Update(msg)
-	case tabLogs:
-		cmd, status, isErr = a.logs.Update(msg)
-	case tabTraffic:
-		cmd, status, isErr = a.traffic.Update(msg)
-	case tabProfiles:
-		cmd, status, isErr = a.profiles.Update(msg)
-	case tabConfig:
-		cmd, status, isErr = a.config.Update(msg)
-	}
-	if cm, ok := msg.(configLoadedMsg); ok && cm.err == nil && cm.cfg != nil {
-		a.groups.setConfig(cm.cfg)
-	}
-	if status != "" {
-		a.status = status
-		a.statusErr = isErr
-	}
-	return cmd
-}
-
 func (a *App) bodyDims() (int, int) {
-	top := renderTabs(a.active, a.width)
-	help := renderHelp(a.width, "x")
-	status := renderStatus(a.width, " ", false)
+	width := a.width
+	if width < 1 {
+		width = 1
+	}
+	top := renderTabs(a.active, width)
+	help := renderHelp(width, "x")
+	statusText, statusErr := a.statusLine()
+	status := renderStatus(width, statusText, statusErr)
 	bh := a.height - lipgloss.Height(top) - lipgloss.Height(help) - lipgloss.Height(status)
 	if bh < 1 {
 		bh = 1
 	}
-	bw := a.width - 4
+	bw := width - 4
 	if bw < 1 {
 		bw = 1
 	}
@@ -232,17 +157,19 @@ func (a *App) bodyDims() (int, int) {
 }
 
 func (a *App) View() string {
-	if a.width == 0 {
+	if a.width <= 0 {
 		return "loading..."
 	}
-	top := renderTabs(a.active, a.width)
-	help := renderHelp(a.width, helpFor(a.active, a.groups.helpMode()))
-	status := renderStatus(a.width, a.status, a.statusErr)
+	width := a.width
+	top := renderTabs(a.active, width)
+	help := renderHelp(width, helpFor(a.active, a.groups.helpMode()))
+	statusText, statusErr := a.statusLine()
+	status := renderStatus(width, statusText, statusErr)
 	bodyHeight := a.height - lipgloss.Height(top) - lipgloss.Height(help) - lipgloss.Height(status)
 	if bodyHeight < 3 {
 		bodyHeight = 3
 	}
-	innerW := a.width - 4
+	innerW := width - 4
 	if innerW < 1 {
 		innerW = 1
 	}
@@ -275,6 +202,14 @@ func (a *App) View() string {
 	case tabConfig:
 		body = a.config.View()
 	}
-	bodyBox := stFrame.Width(a.width - 2).Height(bodyHeight - 2).Render(body)
+	frameWidth := width - 2
+	if frameWidth < 1 {
+		frameWidth = 1
+	}
+	frameHeight := bodyHeight - 2
+	if frameHeight < 1 {
+		frameHeight = 1
+	}
+	bodyBox := stFrame.Width(frameWidth).Height(frameHeight).Render(body)
 	return strings.Join([]string{top, bodyBox, status, help}, "\n")
 }

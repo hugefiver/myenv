@@ -2,8 +2,6 @@ package ui
 
 import (
 	"fmt"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 type tab int
@@ -22,19 +20,24 @@ const (
 var tabNames = [...]string{"1 Groups", "2 Proxies", "3 Conns", "4 Logs", "5 Traffic", "6 Profiles", "7 Config"}
 
 func renderTabs(active tab, width int) string {
-	cells := make([]string, 0, tabCount)
+	if width <= 0 {
+		return ""
+	}
+	cells := make([]textSegment, 0, tabCount)
 	for i := tab(0); i < tabCount; i++ {
 		s := stTabIdle
 		if i == active {
 			s = stTabActive
 		}
-		cells = append(cells, s.Render(tabNames[i]))
+		cells = append(cells, segment(s, " "+tabNames[i]+" "))
 	}
-	row := lipgloss.JoinHorizontal(lipgloss.Top, cells...)
-	return stTabBar.Width(width).Render(row)
+	return stTabBar.Width(width).Render(renderTextLine(width, cells...))
 }
 
 func renderStatus(width int, status string, isErr bool) string {
+	if width <= 2 {
+		return ""
+	}
 	st := stStatus
 	if isErr {
 		st = st.Foreground(colErr)
@@ -42,11 +45,15 @@ func renderStatus(width int, status string, isErr bool) string {
 	if status == "" {
 		status = " "
 	}
-	return st.Width(width).Render(status)
+	contentWidth := width - 2
+	return st.Width(contentWidth).Render(renderTextLine(contentWidth, segment(stPlain, status)))
 }
 
 func renderHelp(width int, help string) string {
-	return stHelp.Width(width).Render(help)
+	if width <= 0 {
+		return ""
+	}
+	return stHelp.Width(width).Render(renderTextLine(width, segment(stHelp, help)))
 }
 
 func humanBytes(n int64) string {

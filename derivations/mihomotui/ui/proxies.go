@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 
@@ -9,40 +10,83 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"mihomotui/api"
+	"mihomotui/internal/termtext"
 )
 
 type proxyRow struct {
-	name  string
-	typ   string
-	delay int
+	rawName string
+	name    string
+	typ     string
+	delay   int
 }
 
 type proxiesModel struct {
-	cli    *api.Client
-	rows   []proxyRow
-	cursor int
-	scroll int
-	width  int
-	height int
+	ctx           context.Context
+	cli           *api.Client
+	loadRequests  requestTracker
+	delayRequests requestTracker
+	rows          []proxyRow
+	cursor        int
+	scroll        int
+	width         int
+	height        int
 }
 
-func newProxiesModel(cli *api.Client) *proxiesModel {
-	return &proxiesModel{cli: cli}
+const proxiesLoadTarget = "proxies"
+
+func newProxiesModel(ctx context.Context, cli *api.Client) *proxiesModel {
+	return &proxiesModel{ctx: ctx, cli: cli}
 }
 
 func (m *proxiesModel) load() tea.Cmd {
+	id := m.loadRequests.Begin(proxiesLoadTarget)
 	cli := m.cli
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), reqTimeout)
+		ctx, cancel := context.WithTimeout(m.ctx, reqTimeout)
 		defer cancel()
-		p, err := cli.Proxies(ctx)
-		return proxiesAllMsg{proxies: p, err: err}
+		type proxyResult struct {
+			proxies map[string]api.Proxy
+			err     error
+		}
+		type groupResult struct {
+			groups []api.Proxy
+			err    error
+		}
+		proxies := make(chan proxyResult, 1)
+		groups := make(chan groupResult, 1)
+		go func() {
+			result, err := cli.Proxies(ctx)
+			proxies <- proxyResult{proxies: result, err: err}
+		}()
+		go func() {
+			result, err := cli.Groups(ctx)
+			groups <- groupResult{groups: result, err: err}
+		}()
+		loadedProxies := <-proxies
+		loadedGroups := <-groups
+		return proxiesAllMsg{
+			RequestID: id,
+			Target:    proxiesLoadTarget,
+			Proxies:   loadedProxies.proxies,
+			Groups:    loadedGroups.groups,
+			Err:       errors.Join(loadedProxies.err, loadedGroups.err),
+		}
 	}
 }
 
 type proxiesAllMsg struct {
-	proxies map[string]api.Proxy
-	err     error
+	RequestID requestID
+	Target    string
+	Proxies   map[string]api.Proxy
+	Groups    []api.Proxy
+	Err       error
+}
+
+type proxyDelayMsg struct {
+	RequestID requestID
+	Node      string
+	Delay     int
+	Err       error
 }
 
 func isLeafProxy(t string) bool {
@@ -50,20 +94,26 @@ func isLeafProxy(t string) bool {
 	case "Direct", "Reject", "RejectDrop", "Compatible", "Pass":
 		return false
 	}
-	return !isGroupType(t)
+	return true
 }
 
-func (m *proxiesModel) ingest(p map[string]api.Proxy) {
+func (m *proxiesModel) ingest(p map[string]api.Proxy, groups []api.Proxy) {
+	groupNames := make(map[string]struct{}, len(groups))
+	for _, group := range groups {
+		groupNames[group.Name] = struct{}{}
+	}
 	rows := make([]proxyRow, 0, len(p))
 	for _, pr := range p {
-		if !isLeafProxy(pr.Type) {
+		if _, isGroup := groupNames[pr.Name]; isGroup || !isLeafProxy(pr.Type) {
 			continue
 		}
+		name := termtext.SingleLine(pr.Name)
+		typ := termtext.SingleLine(pr.Type)
 		d := 0
 		if n := len(pr.History); n > 0 {
 			d = pr.History[n-1].Delay
 		}
-		rows = append(rows, proxyRow{name: pr.Name, typ: pr.Type, delay: d})
+		rows = append(rows, proxyRow{rawName: pr.Name, name: name, typ: typ, delay: d})
 	}
 	sort.Slice(rows, func(i, j int) bool {
 		di, dj := rows[i].delay, rows[j].delay
@@ -87,21 +137,27 @@ func (m *proxiesModel) ingest(p map[string]api.Proxy) {
 func (m *proxiesModel) Update(msg tea.Msg) (tea.Cmd, string, bool) {
 	switch v := msg.(type) {
 	case proxiesAllMsg:
-		if v.err != nil {
-			return nil, "load failed: " + v.err.Error(), true
+		if !m.loadRequests.IsCurrent(v.RequestID, v.Target) {
+			return nil, "", false
 		}
-		m.ingest(v.proxies)
+		if v.Err != nil {
+			return nil, "load failed: " + v.Err.Error(), true
+		}
+		m.ingest(v.Proxies, v.Groups)
 		return nil, "proxies loaded", false
-	case nodeDelayMsg:
-		if v.err != nil {
-			return nil, "test: " + v.err.Error(), true
+	case proxyDelayMsg:
+		if !m.delayRequests.IsCurrent(v.RequestID, v.Node) {
+			return nil, "", false
+		}
+		if v.Err != nil {
+			return nil, "test: " + v.Err.Error(), true
 		}
 		for i := range m.rows {
-			if m.rows[i].name == v.name {
-				m.rows[i].delay = v.delay
+			if m.rows[i].rawName == v.Node {
+				m.rows[i].delay = v.Delay
 			}
 		}
-		return nil, "tested " + v.name, false
+		return nil, "tested " + termtext.SingleLine(v.Node), false
 	case tea.KeyMsg:
 		return m.handleKey(v)
 	}
@@ -128,14 +184,15 @@ func (m *proxiesModel) handleKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
 		return m.load(), "refreshing", false
 	case "d", "t":
 		if m.cursor < len(m.rows) {
-			name := m.rows[m.cursor].name
+			row := m.rows[m.cursor]
+			id := m.delayRequests.Begin(row.rawName)
 			cli := m.cli
 			return func() tea.Msg {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*reqTimeout)
+				ctx, cancel := context.WithTimeout(m.ctx, 10*reqTimeout)
 				defer cancel()
-				d, err := cli.ProxyDelay(ctx, name, 5000)
-				return nodeDelayMsg{name: name, delay: d, err: err}
-			}, "testing " + name, false
+				d, err := cli.ProxyDelay(ctx, row.rawName, 5000)
+				return proxyDelayMsg{RequestID: id, Node: row.rawName, Delay: d, Err: err}
+			}, "testing " + row.name, false
 		}
 	}
 	return nil, "", false
@@ -143,10 +200,10 @@ func (m *proxiesModel) handleKey(k tea.KeyMsg) (tea.Cmd, string, bool) {
 
 func (m *proxiesModel) View() string {
 	if len(m.rows) == 0 {
-		return stMuted.Render("no proxies (press r)")
+		return renderTextLine(m.width, segment(stMuted, "no proxies (press r)"))
 	}
 	var b strings.Builder
-	b.WriteString(stTitle.Render("Proxies") + "  " + stMuted.Render("(d/t test, r refresh)") + "\n\n")
+	b.WriteString(renderTextLine(m.width, segment(stTitle, "Proxies"), segment(stMuted, "  (d/t test, r refresh)")) + "\n\n")
 	view := m.height - 3
 	if view < 1 {
 		view = 1
@@ -159,18 +216,23 @@ func (m *proxiesModel) View() string {
 	for i := m.scroll; i < end; i++ {
 		r := m.rows[i]
 		cur := "  "
-		name := r.name
+		curStyle := stPlain
+		nameStyle := stPlain
 		if i == m.cursor {
-			cur = stMark.Render("▸ ")
-			name = lipgloss.NewStyle().Bold(true).Render(name)
+			cur, curStyle = "▸ ", stMark
+			nameStyle = lipgloss.NewStyle().Bold(true)
 		}
-		line := cur + name + stMuted.Render("  ["+r.typ+"]")
+		parts := []textSegment{
+			segment(curStyle, cur),
+			segment(nameStyle, termtext.Truncate(r.name, m.width)),
+			segment(stMuted, "  ["+termtext.Truncate(r.typ, m.width)+"]"),
+		}
 		if r.delay > 0 {
-			line += stMuted.Render("  " + itoaMs(r.delay))
+			parts = append(parts, segment(stMuted, "  "+itoaMs(r.delay)))
 		} else if r.delay < 0 {
-			line += stErr.Render("  timeout")
+			parts = append(parts, segment(stErr, "  timeout"))
 		}
-		b.WriteString(truncWide(line, m.width) + "\n")
+		b.WriteString(renderTextLine(m.width, parts...) + "\n")
 	}
 	return b.String()
 }

@@ -20,6 +20,10 @@ type ProxiesResp struct {
 	Proxies map[string]Proxy `json:"proxies"`
 }
 
+type GroupsResp struct {
+	Proxies []Proxy `json:"proxies"`
+}
+
 type DelayResp struct {
 	Delay   int    `json:"delay"`
 	Message string `json:"message,omitempty"`
@@ -61,8 +65,10 @@ type LogEntry struct {
 }
 
 type Traffic struct {
-	Up   int64 `json:"up"`
-	Down int64 `json:"down"`
+	Up        int64 `json:"up"`
+	Down      int64 `json:"down"`
+	UpTotal   int64 `json:"upTotal"`
+	DownTotal int64 `json:"downTotal"`
 }
 
 type Tun struct {
