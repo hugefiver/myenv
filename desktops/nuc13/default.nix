@@ -9,55 +9,241 @@
   ...
 } : let
   mihomotuiRepo = "/home/hugefiver/.local/share/mihomotui";
-  mihomotuiActive = "${mihomotuiRepo}/active.yaml";
   legacyConfig = "/home/hugefiver/.local/share/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";
   migrationId = "6d69686f6d6f7475692d6d6967726174";
-  seedMihomotui = pkgs.writeShellApplication {
-    name = "mihomotui-seed-profile-repo";
-    runtimeInputs = [ pkgs.coreutils ];
-    text = ''
-      if [ "$#" -ne 4 ]; then
-        printf '%s\n' 'usage: mihomotui-seed-profile-repo REPO LEGACY OWNER GROUP' >&2
-        exit 64
+  syncMihomotuiText = ''
+    set -eu
+
+    if [ "$#" -ne 2 ] && [ "$#" -ne 3 ]; then
+      printf '%s\n' 'usage: mihomotui-sync-profile-repo REPO LEGACY [--emit-active]' >&2
+      exit 64
+    fi
+    if [ "$#" -eq 3 ] && [ "$3" != "--emit-active" ]; then
+      printf '%s\n' 'usage: mihomotui-sync-profile-repo REPO LEGACY [--emit-active]' >&2
+      exit 64
+    fi
+
+    REPO="$1"
+    LEGACY="$2"
+    EMIT_ACTIVE="''${3:-}"
+    MIGRATION_ID='${migrationId}'
+    MIGRATION_FILE="profiles/$MIGRATION_ID.yaml"
+    MIGRATION_PAYLOAD="$REPO/$MIGRATION_FILE"
+    INDEX="$REPO/profiles.json"
+    ACTIVE="$REPO/active.yaml"
+    seed_stage=""
+    seed_snapshot=""
+    snapshot=""
+    migration_stage=""
+
+    umask 077
+
+    die() {
+      printf '%s\n' "mihomotui-sync-profile-repo: $*" >&2
+      exit 1
+    }
+
+    is_regular_file() {
+      [ ! -L "$1" ] && [ -f "$1" ]
+    }
+
+    emit_active() {
+      if [ "$EMIT_ACTIVE" = "--emit-active" ]; then
+        if [ "$ACTIVE_ID" = "$MIGRATION_ID" ]; then
+          cat -- "$MIGRATION_PAYLOAD"
+        else
+          cat -- "$ACTIVE"
+        fi
       fi
+    }
 
-      REPO="$1"
-      LEGACY="$2"
-      OWNER="$3"
-      GROUP="$4"
-      MIGRATION_ID='${migrationId}'
+    cleanup() {
+      for temporary in "$seed_stage" "$seed_snapshot" "$snapshot" "$migration_stage"; do
+        if [ -n "$temporary" ]; then
+          rm -rf -- "$temporary"
+        fi
+      done
+    }
+    trap cleanup EXIT
 
-      if [ -e "$REPO" ] || [ -L "$REPO" ] || [ ! -f "$LEGACY" ]; then
+    if ! is_regular_file "$LEGACY"; then
+      die "legacy config must be a regular, non-symlink file: $LEGACY"
+    fi
+
+    if [ -L "$REPO" ]; then
+      die "profile repository must not be a symlink: $REPO"
+    fi
+
+    if [ ! -e "$REPO" ]; then
+      repo_parent=$(dirname "$REPO")
+      install -d -m 0755 "$repo_parent"
+      seed_stage=$(mktemp -d "$repo_parent/.mihomotui-seed.XXXXXX") || die "failed to create seed stage"
+      chmod 0700 "$seed_stage"
+      mkdir -m 0700 "$seed_stage/profiles"
+      seed_snapshot=$(mktemp "$repo_parent/.mihomotui-legacy.XXXXXX") || die "failed to create legacy snapshot"
+      cp -- "$LEGACY" "$seed_snapshot"
+      chmod 0600 "$seed_snapshot"
+      cp -- "$seed_snapshot" "$seed_stage/$MIGRATION_FILE"
+      cp -- "$seed_snapshot" "$seed_stage/active.yaml"
+      timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      printf '{\n  "version": 1,\n  "active_id": "%s",\n  "profiles": [\n    {\n      "id": "%s",\n      "name": "clash-verge-migration",\n      "kind": "file",\n      "file": "profiles/%s.yaml",\n      "created_at": "%s",\n      "updated_at": "%s"\n    }\n  ]\n}\n' \
+        "$MIGRATION_ID" "$MIGRATION_ID" "$MIGRATION_ID" "$timestamp" "$timestamp" > "$seed_stage/profiles.json"
+      chmod 0600 "$seed_stage/$MIGRATION_FILE" "$seed_stage/active.yaml" "$seed_stage/profiles.json"
+
+      if mv -T --no-clobber -- "$seed_stage" "$REPO" && [ ! -e "$seed_stage" ]; then
+        seed_stage=""
+        ACTIVE_ID="$MIGRATION_ID"
+        emit_active
         exit 0
       fi
+      if [ ! -e "$REPO" ] && [ ! -L "$REPO" ]; then
+        die "failed to install seeded profile repository"
+      fi
+    fi
 
-      repoParent=$(dirname "$REPO")
-      install -d -m 0755 "$repoParent"
-      stage=$(mktemp -d "$repoParent/.mihomotui-seed.XXXXXX")
+    if [ -L "$REPO" ]; then
+      die "profile repository must not be a symlink: $REPO"
+    fi
+    if [ ! -d "$REPO" ]; then
+      die "profile repository must be a directory: $REPO"
+    fi
+    if [ -L "$REPO/profiles" ] || [ ! -d "$REPO/profiles" ]; then
+      die "profiles must be a non-symlink directory: $REPO/profiles"
+    fi
+    if ! is_regular_file "$INDEX"; then
+      die "profile index must be a regular, non-symlink file: $INDEX"
+    fi
+    if ! is_regular_file "$MIGRATION_PAYLOAD"; then
+      die "migration payload must be a regular, non-symlink file: $MIGRATION_PAYLOAD"
+    fi
+    if ! is_regular_file "$ACTIVE"; then
+      die "active config must be a regular, non-symlink file: $ACTIVE"
+    fi
+    ACTIVE_ID=$(jq -er --arg id "$MIGRATION_ID" '
+      if (
+        (.version == 1) and
+        (.active_id | type == "string") and
+        (.profiles | type == "array") and
+        ([.profiles[] | select(type == "object" and .id == $id)] | length == 1) and
+        ([.profiles[] | select(
+          type == "object" and
+          .id == $id and
+          .name == "clash-verge-migration" and
+          .kind == "file" and
+          .file == ("profiles/" + $id + ".yaml") and
+          ((has("url") | not) or .url == "")
+        )] | length == 1)
+      ) then
+        .active_id
+      else
+        error("invalid migration metadata")
+      end
+    ' "$INDEX") || die "profile index has an unexpected migration entry: $INDEX"
+
+    snapshot=$(mktemp "$REPO/.mihomotui-legacy.XXXXXX") || die "failed to create legacy snapshot"
+    cp -- "$LEGACY" "$snapshot"
+    chmod 0600 "$snapshot"
+    migration_stage=$(mktemp "$REPO/profiles/.mihomotui-migration.XXXXXX") || die "failed to create migration stage"
+    cp -- "$snapshot" "$migration_stage"
+    chmod 0600 "$migration_stage"
+
+    if ! mv -T -- "$migration_stage" "$MIGRATION_PAYLOAD"; then
+      die "failed to install migration payload"
+    fi
+    migration_stage=""
+    emit_active
+  '';
+  syncMihomotui = pkgs.writeShellApplication {
+    name = "mihomotui-sync-profile-repo";
+    runtimeInputs = [ pkgs.coreutils pkgs.jq ];
+    text = syncMihomotuiText;
+  };
+  mihomotuiTestInterceptors = pkgs.runCommand "mihomotui-sync-test-interceptors" {} ''
+    mkdir -p "$out/bin"
+    cat > "$out/bin/cp" <<'EOF'
+    #!${pkgs.runtimeShell}
+    set -eu
+    "${pkgs.coreutils}/bin/cp" "$@"
+    if [ "''${MIHOMOTUI_TEST_MUTATE_LEGACY:-}" = "1" ] && [ "$#" -eq 3 ] && [ "$1" = "--" ]; then
+      source_path="$2"
+      destination_path="$3"
+      case "$destination_path" in
+        */.mihomotui-legacy.*)
+          printf '%s\n' 'mihomotui test mutation' > "$source_path"
+          ;;
+      esac
+    fi
+    EOF
+    cat > "$out/bin/mv" <<'EOF'
+    #!${pkgs.runtimeShell}
+    set -eu
+    source_path=""
+    destination_path=""
+    for argument in "$@"; do
+      source_path="$destination_path"
+      destination_path="$argument"
+    done
+    if [ "''${MIHOMOTUI_TEST_CONTEST_SEED:-}" = "1" ]; then
+      case "$source_path" in
+        */.mihomotui-seed.*)
+          "${pkgs.coreutils}/bin/rm" -rf -- "$destination_path"
+          "${pkgs.coreutils}/bin/mkdir" -- "$destination_path"
+          printf '%s\n' 'mihomotui test interceptor: contesting seed destination' >&2
+          exit 1
+          ;;
+      esac
+    fi
+    exec "${pkgs.coreutils}/bin/mv" "$@"
+    EOF
+    chmod 0555 "$out/bin/cp" "$out/bin/mv"
+  '';
+  syncMihomotuiTest = pkgs.writeShellApplication {
+    name = "mihomotui-sync-profile-repo-test";
+    runtimeInputs = [ mihomotuiTestInterceptors pkgs.coreutils pkgs.jq ];
+    text = syncMihomotuiText;
+  };
+  mihomotuiSyncCommand = lib.escapeShellArgs [
+    "${pkgs.util-linux}/bin/runuser"
+    "-u"
+    "hugefiver"
+    "--"
+    "${syncMihomotui}/bin/mihomotui-sync-profile-repo"
+    mihomotuiRepo
+    legacyConfig
+  ];
+  mihomotuiEmitActiveCommand = lib.escapeShellArgs [
+    "${pkgs.util-linux}/bin/runuser"
+    "-u"
+    "hugefiver"
+    "--"
+    "${syncMihomotui}/bin/mihomotui-sync-profile-repo"
+    mihomotuiRepo
+    legacyConfig
+    "--emit-active"
+  ];
+  prepareMihomoBoot = pkgs.writeShellApplication {
+    name = "mihomo-boot-prepare";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      set -eu
+
+      RUN_DIR="''${RUNTIME_DIRECTORY:-/run/mihomo-boot}"
+      temporary=""
+
       cleanup() {
-        rm -rf -- "$stage"
+        if [ -n "$temporary" ]; then
+          rm -f -- "$temporary"
+        fi
       }
       trap cleanup EXIT
 
-      chmod 0700 "$stage"
-      mkdir -m 0700 "$stage/profiles"
-      cp -- "$LEGACY" "$stage/profiles/$MIGRATION_ID.yaml"
-      cp -- "$LEGACY" "$stage/active.yaml"
-      timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-      printf '{\n  "version": 1,\n  "active_id": "%s",\n  "profiles": [\n    {\n      "id": "%s",\n      "name": "clash-verge-migration",\n      "kind": "file",\n      "file": "profiles/%s.yaml",\n      "created_at": "%s",\n      "updated_at": "%s"\n    }\n  ]\n}\n' \
-        "$MIGRATION_ID" "$MIGRATION_ID" "$MIGRATION_ID" "$timestamp" "$timestamp" > "$stage/profiles.json"
-      chmod 0600 "$stage/profiles/$MIGRATION_ID.yaml" "$stage/active.yaml" "$stage/profiles.json"
-
-      if [ "$(id -u)" -eq 0 ]; then
-        chown -R "$OWNER:$GROUP" "$stage"
-      fi
-
-      if ! mv -T --no-clobber -- "$stage" "$REPO"; then
-        if [ -e "$REPO" ] || [ -L "$REPO" ]; then
-          exit 0
-        fi
+      temporary=$(mktemp "$RUN_DIR/.mihomotui-source.XXXXXX")
+      chmod 0600 "$temporary"
+      if ! ${mihomotuiEmitActiveCommand} > "$temporary"; then
         exit 1
       fi
+      mv -fT -- "$temporary" "$RUN_DIR/source.yaml"
+      temporary=""
     '';
   };
 in {
@@ -112,21 +298,21 @@ in {
   '';
 
   system.activationScripts.mihomotuiProfileSeed = lib.stringAfter [ "users" ] ''
-    ${lib.escapeShellArgs [
-      "${seedMihomotui}/bin/mihomotui-seed-profile-repo"
-      mihomotuiRepo
-      legacyConfig
-      "hugefiver"
-      "users"
-    ]}
+    ${mihomotuiSyncCommand}
   '';
-  system.build.mihomotuiProfileSeed = seedMihomotui;
+  system.build.mihomotuiProfileSeed = syncMihomotui;
+  system.build.mihomotuiProfileSyncTest = syncMihomotuiTest;
 
   # SSH 期透明代理；登录桌面后 mihomo-boot-handoff 同步停止，verge 接管
   systemd.services.mihomo-boot =
     let
       bootHome = "/var/lib/mihomo-boot";
       geoipData = "${pkgs.v2ray-geoip}/share/v2ray/geoip.dat";
+      countryMMDB = pkgs.dbip-country-lite.mmdb;
+      geositeData = pkgs.fetchurl {
+        url = "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/download/202607092306/geosite.dat";
+        hash = "sha256-E1Vs8u0vkDtgXQNHJejL0Xenl/fYn5IE9npD2M0Js8o=";
+      };
       bootDevice = "MihomoBoot";
       bootTable = "12022";
       bootRule = "9200";
@@ -134,11 +320,13 @@ in {
         name = "mihomo-boot-start";
         runtimeInputs = [ unstable.mihomo pkgs.coreutils pkgs.iproute2 pkgs.nftables pkgs.procps pkgs.gnugrep pkgs.yq-go ];
         text = ''
-          SOURCE_CFG='${mihomotuiActive}'
           BOOT_HOME='${bootHome}'
           RUN_DIR="''${RUNTIME_DIRECTORY:-/run/mihomo-boot}"
           RUN_CFG="$RUN_DIR/config.yaml"
+          SOURCE_CFG="$RUN_DIR/source.yaml"
           install -m 0644 '${geoipData}' "$BOOT_HOME/geoip.dat"
+          install -m 0644 '${countryMMDB}' "$BOOT_HOME/Country.mmdb"
+          install -m 0644 '${geositeData}' "$BOOT_HOME/GeoSite.dat"
 
           # 等非-TUN default 路由（最多 60s）
           for i in $(seq 1 60); do
@@ -235,11 +423,11 @@ in {
       description = "mihomo (boot-time, handed off to clash-verge GUI after login)";
       wantedBy = [ "multi-user.target" ];
       unitConfig = {
-        ConditionPathExists = mihomotuiActive;
         StartLimitIntervalSec = 0;
       };
       serviceConfig = {
         Type = "simple";
+        ExecStartPre = "${prepareMihomoBoot}/bin/mihomo-boot-prepare";
         ExecStart = "${startScript}/bin/mihomo-boot-start";
         ExecStopPost = "${teardown}/bin/mihomo-boot-teardown";
         Restart = "no";
