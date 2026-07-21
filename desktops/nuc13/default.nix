@@ -126,6 +126,7 @@ in {
   systemd.services.mihomo-boot =
     let
       bootHome = "/var/lib/mihomo-boot";
+      geoipData = "${pkgs.v2ray-geoip}/share/v2ray/geoip.dat";
       bootDevice = "MihomoBoot";
       bootTable = "12022";
       bootRule = "9200";
@@ -137,6 +138,7 @@ in {
           BOOT_HOME='${bootHome}'
           RUN_DIR="''${RUNTIME_DIRECTORY:-/run/mihomo-boot}"
           RUN_CFG="$RUN_DIR/config.yaml"
+          install -m 0644 '${geoipData}' "$BOOT_HOME/geoip.dat"
 
           # 等非-TUN default 路由（最多 60s）
           for i in $(seq 1 60); do
@@ -184,6 +186,7 @@ in {
           fi
 
           yq '
+            .["geodata-mode"] = true |
             .tun.enable = true |
             .tun.device = "${bootDevice}" |
             .tun.stack = "gvisor" |
