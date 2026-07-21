@@ -23,9 +23,10 @@ const (
 )
 
 type Client struct {
-	baseURL *url.URL
-	Secret  string
-	HTTP    *http.Client
+	baseURL             *url.URL
+	Secret              string
+	HTTP                *http.Client
+	directProfileClient func() (*http.Client, error)
 }
 
 func New(base, secret string) (*Client, error) {
@@ -34,9 +35,10 @@ func New(base, secret string) (*Client, error) {
 		return nil, err
 	}
 	return &Client{
-		baseURL: baseURL,
-		Secret:  secret,
-		HTTP:    &http.Client{Timeout: 10 * time.Second},
+		baseURL:             baseURL,
+		Secret:              secret,
+		HTTP:                &http.Client{Timeout: 10 * time.Second},
+		directProfileClient: newDirectProfileClient,
 	}, nil
 }
 
@@ -154,13 +156,21 @@ func requestLabel(method, endpoint string) string {
 	return method + " " + endpoint
 }
 
+type bodyLimitError struct {
+	limit int64
+}
+
+func (e *bodyLimitError) Error() string {
+	return fmt.Sprintf("response body exceeds %d bytes", e.limit)
+}
+
 func readBounded(body io.Reader, limit int64) ([]byte, error) {
 	data, err := io.ReadAll(io.LimitReader(body, limit+1))
 	if err != nil {
 		return nil, err
 	}
 	if int64(len(data)) > limit {
-		return nil, fmt.Errorf("response body exceeds %d bytes", limit)
+		return nil, &bodyLimitError{limit: limit}
 	}
 	return data, nil
 }
@@ -272,55 +282,108 @@ func (c *Client) PutConfig(ctx context.Context, payload []byte) error {
 	return c.do(ctx, http.MethodPut, "/configs?force=true", map[string]string{"payload": string(payload)}, nil)
 }
 
+type profileDownloadError struct {
+	label             string
+	category          string
+	cause             error
+	retry             bool
+	directUnavailable bool
+}
+
+func (e *profileDownloadError) Error() string {
+	return e.label + ": " + e.category
+}
+
+func (e *profileDownloadError) Unwrap() error {
+	return e.cause
+}
+
+type profileDownloadFallbackError struct {
+	label  string
+	normal *profileDownloadError
+	direct *profileDownloadError
+}
+
+func (e *profileDownloadFallbackError) Error() string {
+	return fmt.Sprintf("%s: normal route %s; direct route %s", e.label, e.normal.category, e.direct.category)
+}
+
+func (e *profileDownloadFallbackError) Unwrap() []error {
+	return []error{e.normal, e.direct}
+}
+
+type profileRedirectError struct {
+	category string
+}
+
+func (e *profileRedirectError) Error() string {
+	return e.category
+}
+
 func (c *Client) DownloadProfile(ctx context.Context, rawURL string) ([]byte, string, error) {
 	downloadURL, err := url.Parse(rawURL)
+	label := downloadLabel(downloadURL)
 	if err != nil {
-		return nil, "", errors.New("GET /: invalid download URL")
+		return nil, "", &profileDownloadError{label: label, category: "invalid download URL"}
 	}
 	if err := validateDownloadURL(downloadURL); err != nil {
-		return nil, "", fmt.Errorf("GET %s: %s", downloadEndpoint(downloadURL), termtext.SingleLine(err.Error()))
+		return nil, "", &profileDownloadError{label: label, category: "invalid download URL"}
 	}
+
+	var originalCheckRedirect func(*http.Request, []*http.Request) error
+	if c.HTTP != nil {
+		originalCheckRedirect = c.HTTP.CheckRedirect
+	}
+	normalHTTP := newProfileDownloadHTTP(c.HTTP, originalCheckRedirect)
+	data, finalURL, normalErr := downloadProfileAttempt(ctx, normalHTTP, downloadURL, label)
+	if normalErr == nil {
+		return data, finalURL, nil
+	}
+	if !normalErr.retry || ctx.Err() != nil || c.directProfileClient == nil {
+		return nil, "", normalErr
+	}
+
+	directClient, err := c.directProfileClient()
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, "", newProfileTransportError(ctx, label, ctxErr)
+	}
+	if err != nil || directClient == nil {
+		return nil, "", normalErr
+	}
+	directHTTP := newProfileDownloadHTTP(directClient, originalCheckRedirect)
+	data, finalURL, directErr := downloadProfileAttempt(ctx, directHTTP, downloadURL, label)
+	if directErr == nil {
+		return data, finalURL, nil
+	}
+	if directErr.directUnavailable {
+		return nil, "", normalErr
+	}
+	return nil, "", &profileDownloadFallbackError{label: label, normal: normalErr, direct: directErr}
+}
+
+func downloadProfileAttempt(ctx context.Context, client *http.Client, downloadURL *url.URL, label string) ([]byte, string, *profileDownloadError) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL.String(), nil)
 	if err != nil {
-		return nil, "", fmt.Errorf("GET %s: request: %w", downloadEndpoint(downloadURL), err)
+		return nil, "", &profileDownloadError{label: label, category: "request creation failed", cause: safeProfileDownloadCause(ctx, err)}
 	}
 	req.Header.Del("Authorization")
 
-	downloadHTTP := *c.HTTP
-	// Profile operations provide their own deadline, which may intentionally be
-	// longer than the controller client's general request timeout.
-	downloadHTTP.Timeout = 0
-	originalCheckRedirect := downloadHTTP.CheckRedirect
-	downloadHTTP.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if err := validateDownloadURL(req.URL); err != nil {
-			return fmt.Errorf("unsafe profile redirect: %w", err)
-		}
-		if originalCheckRedirect != nil {
-			if err := originalCheckRedirect(req, via); err != nil {
-				return err
-			}
-		} else if len(via) >= 10 {
-			return errors.New("stopped after 10 redirects")
-		}
-		if err := validateDownloadURL(req.URL); err != nil {
-			return fmt.Errorf("unsafe profile redirect: %w", err)
-		}
-		req.Header.Del("Authorization")
-		return nil
-	}
-
-	label := requestLabel(http.MethodGet, downloadEndpoint(downloadURL))
-	resp, err := downloadHTTP.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return nil, "", fmt.Errorf("%s: download: %w", label, err)
+		return nil, "", newProfileTransportError(ctx, label, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, "", c.statusError(label, resp)
+		return nil, "", &profileDownloadError{label: label, category: fmt.Sprintf("http %d", resp.StatusCode)}
 	}
 	data, err := readBounded(resp.Body, MaxBodyBytes)
 	if err != nil {
-		return nil, "", fmt.Errorf("%s: read response: %w", label, err)
+		category := "response read failed"
+		var limitErr *bodyLimitError
+		if errors.As(err, &limitErr) {
+			category = limitErr.Error()
+		}
+		return nil, "", &profileDownloadError{label: label, category: category, cause: safeProfileDownloadCause(ctx, err)}
 	}
 	finalURL := downloadURL.String()
 	if resp.Request != nil && resp.Request.URL != nil {
@@ -329,13 +392,98 @@ func (c *Client) DownloadProfile(ctx context.Context, rawURL string) ([]byte, st
 	return data, finalURL, nil
 }
 
-func downloadEndpoint(u *url.URL) string {
-	endpoint := u.EscapedPath()
-	if endpoint == "" {
-		endpoint = "/"
+func newProfileTransportError(ctx context.Context, label string, err error) *profileDownloadError {
+	category := "transport error"
+	var redirectErr *profileRedirectError
+	if errors.As(err, &redirectErr) {
+		category = redirectErr.category
 	}
-	if u.RawQuery != "" {
-		endpoint += "?" + u.RawQuery
+	return &profileDownloadError{
+		label:             label,
+		category:          category,
+		cause:             safeProfileDownloadCause(ctx, err),
+		retry:             isRetryableProfileTransportError(ctx, err),
+		directUnavailable: isDirectProfileUnavailable(err),
 	}
-	return endpoint
+}
+
+func safeProfileDownloadCause(ctx context.Context, err error) error {
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return ctxErr
+	}
+	if errors.Is(err, context.Canceled) {
+		return context.Canceled
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return context.DeadlineExceeded
+	}
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		return io.ErrUnexpectedEOF
+	}
+	if errors.Is(err, io.EOF) {
+		return io.EOF
+	}
+	var limitErr *bodyLimitError
+	if errors.As(err, &limitErr) {
+		return limitErr
+	}
+	return nil
+}
+
+func isRetryableProfileTransportError(ctx context.Context, err error) bool {
+	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var redirectErr *profileRedirectError
+	if errors.As(err, &redirectErr) {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	var opErr *net.OpError
+	return errors.As(err, &opErr)
+}
+
+func newProfileDownloadHTTP(base *http.Client, originalCheckRedirect func(*http.Request, []*http.Request) error) *http.Client {
+	var downloadHTTP http.Client
+	if base != nil {
+		downloadHTTP = *base
+	}
+	// Profile operations provide their own deadline, which may intentionally be
+	// longer than the controller client's general request timeout.
+	downloadHTTP.Timeout = 0
+	downloadHTTP.CheckRedirect = safeProfileRedirectPolicy(originalCheckRedirect)
+	return &downloadHTTP
+}
+
+func safeProfileRedirectPolicy(original func(*http.Request, []*http.Request) error) func(*http.Request, []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		if err := validateDownloadURL(req.URL); err != nil {
+			return &profileRedirectError{category: "unsafe redirect"}
+		}
+		req.Header.Del("Authorization")
+		if original != nil {
+			if err := original(req, via); err != nil {
+				if errors.Is(err, http.ErrUseLastResponse) {
+					return http.ErrUseLastResponse
+				}
+				return &profileRedirectError{category: "redirect policy rejected"}
+			}
+		} else if len(via) >= 10 {
+			return &profileRedirectError{category: "redirect limit reached"}
+		}
+		if err := validateDownloadURL(req.URL); err != nil {
+			return &profileRedirectError{category: "unsafe redirect"}
+		}
+		req.Header.Del("Authorization")
+		return nil
+	}
+}
+
+func downloadLabel(u *url.URL) string {
+	if u == nil || u.Host == "" {
+		return "GET <invalid>"
+	}
+	return "GET " + termtext.SingleLine(u.Host)
 }
