@@ -89,6 +89,7 @@
         nixosHosts = {
           nixos-txsh = {
             modules = [
+              commonNixosModule
               ./hosts/nixos-txsh
             ];
           };
@@ -97,6 +98,20 @@
             modules = [
               commonNixosModule
               ./hosts/nixos-txjp
+            ];
+          };
+
+          nixos-txsh2 = {
+            modules = [
+              commonNixosModule
+              ./hosts/nixos-txsh2
+            ];
+          };
+
+          nixos-txjp2 = {
+            modules = [
+              commonNixosModule
+              ./hosts/nixos-txjp2
             ];
           };
 
