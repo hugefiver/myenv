@@ -94,13 +94,6 @@
             ];
           };
 
-          nixos-txjp = {
-            modules = [
-              commonNixosModule
-              ./hosts/nixos-txjp
-            ];
-          };
-
           nixos-txsh2 = {
             modules = [
               commonNixosModule
